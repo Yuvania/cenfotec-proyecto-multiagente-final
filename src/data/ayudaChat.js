@@ -9,7 +9,7 @@ export const PREGUNTAS_AYUDA = [
     pregunta: '¿Cómo creo una historia?',
     texto: 'Para crear una historia de usuario:',
     pasos: [
-      'Entre a "Nueva historia" en el menú superior.',
+      'Entre a «Historias de usuario» en el menú y presione «Nueva historia».',
       'Complete el requerimiento: título, tipo de información, sistema, área solicitante y descripción.',
       'Pulse «Analizar Requerimiento» para que el Agente Analista lo revise.',
       'Lleve a Negocio, en una sola ronda, las preguntas del Analista y las decisiones del Asesor Técnico, y registre las respuestas.',
@@ -98,7 +98,7 @@ export const PREGUNTAS_AYUDA = [
     id: 'pendientes',
     pregunta: '¿Dónde veo lo que tengo por aprobar?',
     texto:
-      'En Pendientes, en el menú: el número indica cuántas cosas esperan su decisión o tiene avisos sin leer. El Product Owner ve las historias por aprobar; quien creó una historia ve si fue aprobada, devuelta con su motivo o rechazada.',
+      'En Notificaciones, en el menú (en el móvil, «Avisos»): el número indica cuántas cosas esperan su decisión o avisos tiene sin leer. Es una sola lista y cada notificación lleva su categoría (Por aprobar, Cambio por decidir, Devuelta, Rechazada o Aprobada); arriba puede filtrar por categoría o por «Requieren acción».',
   },
   {
     id: 'mantenimiento',

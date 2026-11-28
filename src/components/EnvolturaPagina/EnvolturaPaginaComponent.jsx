@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { FileText, Moon, Sun, UserRound, LogOut } from 'lucide-react';
 import { useTema } from '../../hooks/useTema';
 import { useUsuarioActual } from '../../hooks/useUsuarioActual';
 import { DialogoUsuarioComponent } from '../Usuario/DialogoUsuarioComponent';
 import { TEXTO_PIE } from '../../config/entorno';
-import { listaOpcionMenu } from '../../config/rutas';
+import { rutaDeMigas } from '../../config/rutas';
+import { MenuPrincipalComponent } from './MenuPrincipalComponent';
 import { AsistenteAyudaComponent } from '../AsistenteAyuda/AsistenteAyudaComponent';
 import { useSesion } from '../Sesion/SesionContext';
 import { useConfirmacion } from '../Comun/ConfirmacionComponent';
@@ -22,9 +23,11 @@ export const EnvolturaPaginaComponent = () => {
   const [mostrarUsuario, setMostrarUsuario] = useState(false);
   const { seguridad, usuario, puede, salir } = useSesion();
   const confirmar = useConfirmacion();
-  // Número junto a «Pendientes»: lo que espera la decisión de la persona y sus avisos sin leer.
+  // Número junto a «Notificaciones»: lo que espera la decisión de la persona y sus avisos sin leer.
   const { total: totalPendiente } = usePendientes();
-  const contador = { pendientes: totalPendiente };
+  const contador = { notificaciones: totalPendiente };
+  const { pathname } = useLocation();
+  const migas = rutaDeMigas(pathname);
   const cerrarSesion = async () => {
     if (await confirmar({ titulo: 'Cerrar sesión', mensaje: `¿Cerrar la sesión de ${usuario.nombre}?`, textoConfirmar: 'Cerrar sesión' })) salir();
   };
@@ -43,26 +46,7 @@ export const EnvolturaPaginaComponent = () => {
         </NavLink>
 
         {/* Las opciones salen del registro único de pantallas (src/config/rutas.jsx). */}
-        <nav className="barra-lateral__nav" aria-label="Menú principal">
-          {listaOpcionMenu(puede).map(({ destino, etiqueta, corta, titulo, icono: Icono, exacta, contador: claveContador }) => (
-            <NavLink
-              key={destino}
-              to={destino}
-              title={titulo}
-              end={Boolean(exacta)}
-              className={({ isActive }) => `barra-lateral__enlace ${isActive ? 'active' : ''}`}
-            >
-              <Icono size={18} aria-hidden="true" />
-              <span className="barra-lateral__etiqueta">{etiqueta}</span>
-              <span className="barra-lateral__corta" aria-hidden="true">{corta ?? etiqueta}</span>
-              {contador[claveContador] > 0 && (
-                <span className="barra-lateral__contador" aria-label={`${contador[claveContador]} pendientes`}>
-                  {contador[claveContador] > 99 ? '99+' : contador[claveContador]}
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        <MenuPrincipalComponent puede={puede} contador={contador} />
 
         <div className="barra-lateral__pie">
           {seguridad && usuario ? (
@@ -121,6 +105,17 @@ export const EnvolturaPaginaComponent = () => {
 
       <div className="app-cuerpo">
         <main className="main-content">
+          {migas && (
+            <nav className="migas" aria-label="Está en">
+              <span>{migas.grupo}</span>
+              <span aria-hidden="true">›</span>
+              <span>{migas.seccion}</span>
+              <span aria-hidden="true">›</span>
+              {migas.esPrincipal
+                ? <span aria-current="page">{migas.opcion.etiqueta}</span>
+                : <Link to={migas.opcion.destino}>{migas.opcion.etiqueta}</Link>}
+            </nav>
+          )}
           <Outlet />
         </main>
 

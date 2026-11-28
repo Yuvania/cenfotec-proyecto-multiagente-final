@@ -48,7 +48,9 @@ export default class ReporteroResumen {
     // Con reintentos se llama una vez por intento: queda el último.
     const lista = test.titlePath().filter(Boolean);
     const estado = ESTADO[test.outcome()] ?? 'fallido';
-    const etiqueta = (test.tags ?? []).find((tag) => tag !== '@basicas') ?? (test.tags ?? [])[0] ?? '';
+    // El módulo es la etiqueta más específica: la de la pantalla (@roles), no la de su opción del menú.
+    const listaEtiqueta = (test.tags ?? []).filter((tag) => tag !== '@basicas');
+    const etiqueta = listaEtiqueta[listaEtiqueta.length - 1] ?? (test.tags ?? [])[0] ?? '';
     this.porCaso.set(test.id, {
       id: test.id,
       titulo: test.title,

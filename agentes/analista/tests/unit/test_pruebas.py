@@ -267,7 +267,8 @@ def test_el_workflow_ofrece_las_mismas_suites_del_catalogo():
 
 def test_cada_suite_tiene_pruebas_y_cada_prueba_tiene_suite():
     texto = "\n".join(p.read_text(encoding="utf-8") for p in (RAIZ / "e2e").glob("*.spec.js"))
-    usadas = set(re.findall(r"tag: '(@[a-z-]+)'", texto))
+    # Una etiqueta sola (tag: '@roles') o varias (tag: ['@mantenimiento', '@roles']).
+    usadas = {etiqueta for grupo in re.findall(r"tag: (\[[^\]]*\]|'[^']*')", texto) for etiqueta in re.findall(r"@[a-z-]+", grupo)}
     catalogo = {a.etiqueta for a in LISTA_ALCANCE if a.etiqueta}
     assert usadas == catalogo
     # Ninguna prueba queda fuera de una suite: cada test o describe de primer nivel lleva su etiqueta.

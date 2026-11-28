@@ -11,7 +11,7 @@ const HISTORIA = {
 };
 
 // Exportar una historia aprobada a Word y a PDF desde el ícono de descarga del listado.
-test.describe('Exportar Word y PDF', { tag: '@exportar' }, () => {
+test.describe('Exportar Word y PDF', { tag: ['@historias', '@exportar'] }, () => {
   for (const formato of [{ nombre: 'Word', extension: '.docx' }, { nombre: 'PDF', extension: '.pdf' }]) {
     test(`descarga la historia aprobada en ${formato.nombre}`, async ({ page }) => {
       await abrirSinSeguridad(page, '/', { listaHistoria: [HISTORIA] });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { listaOpcionMenu, listaRuta } from '../rutas';
+import { listaOpcionMenu, listaRuta, rutaDeMigas } from '../rutas';
+import { ACCION } from '../acciones';
 
 // Barandas del registro único de pantallas (ver docs/arquitectura.md, skill «agregar-ruta»).
 describe('registro de pantallas', () => {
@@ -11,11 +12,35 @@ describe('registro de pantallas', () => {
 
   it('el menú sale del registro, en orden y sin órdenes repetidos', () => {
     const listaOpcion = listaOpcionMenu();
-    expect(listaOpcion.map((opcion) => opcion.etiqueta)).toEqual(['Inicio', 'Pendientes', 'Historias de usuario', 'Nueva historia', 'Pruebas', 'Mantenimiento', 'Ayuda']);
+    expect(listaOpcion.map((opcion) => opcion.etiqueta)).toEqual(['Inicio', 'Notificaciones', 'Historias de usuario', 'Mantenimiento', 'Ayuda']);
     expect(new Set(listaOpcion.map((opcion) => opcion.orden)).size).toBe(listaOpcion.length);
     listaOpcion.forEach((opcion) => {
       expect(opcion.titulo).toBeTruthy();
       expect(opcion.icono).toBeTruthy();
     });
+  });
+
+  it('Mantenimiento agrupa Seguridad y Calidad, y solo muestra lo permitido', () => {
+    const grupo = listaOpcionMenu().find((opcion) => opcion.tipo === 'grupo');
+    expect(grupo.listaSeccion.map((seccion) => [seccion.titulo, seccion.listaOpcion.map((opcion) => opcion.etiqueta)])).toEqual([
+      ['Seguridad', ['Usuarios', 'Roles y acciones']],
+      ['Calidad', ['Pruebas automatizadas']],
+    ]);
+    const soloPruebas = listaOpcionMenu((accion) => !accion || accion === ACCION.PRUEBA_VER);
+    expect(soloPruebas.find((opcion) => opcion.tipo === 'grupo').listaSeccion.map((seccion) => seccion.titulo)).toEqual(['Calidad']);
+    const sinNada = listaOpcionMenu((accion) => !accion);
+    expect(sinNada.some((opcion) => opcion.tipo === 'grupo')).toBe(false);
+  });
+
+  it('en móvil la barra inferior lleva Inicio, Notificaciones e Historias; el resto va en «Más»', () => {
+    expect(listaOpcionMenu().filter((opcion) => opcion.barraMovil).map((opcion) => opcion.corta)).toEqual(['Inicio', 'Avisos', 'Historias']);
+  });
+
+  it('la ruta de migas sale del grupo y de la opción del menú', () => {
+    expect(rutaDeMigas('/mantenimiento/pruebas')).toEqual({
+      grupo: 'Mantenimiento', seccion: 'Calidad', opcion: { etiqueta: 'Pruebas automatizadas', destino: '/mantenimiento/pruebas' }, esPrincipal: true,
+    });
+    expect(rutaDeMigas('/mantenimiento/pruebas/abc').esPrincipal).toBe(false);
+    expect(rutaDeMigas('/historias')).toBeNull();
   });
 });

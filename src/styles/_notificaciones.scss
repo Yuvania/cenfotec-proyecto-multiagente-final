@@ -1,0 +1,146 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+// Notificaciones: una sola lista con la categoría como etiqueta y filtros arriba.
+// Lo que requiere acción y lo no leído llevan el punto naranja de la marca; lo leído baja de énfasis.
+.notificaciones {
+  &__filtros { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+
+  &__filtro {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 32px;
+    padding: 0.25rem 0.8rem;
+    border: 1px solid $color-border;
+    border-radius: $radius-full;
+    background-color: $color-surface;
+    color: $color-text-secondary;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &:hover { border-color: $color-primary-border; }
+    &:focus-visible { outline: 2px solid $focus-ring; outline-offset: $focus-ring-offset; }
+
+    &--activo { background-color: $color-primary-light; border-color: $color-primary-border; color: $color-primary-text; font-weight: 500; }
+  }
+
+  &__cuenta { font-weight: 600; color: inherit; opacity: 0.75; }
+
+  &__lista {
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+
+    ul { list-style: none; }
+  }
+
+  &__vacio { padding: 1rem; font-size: 0.875rem; color: $color-text-muted; }
+
+  &__fila {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+
+    & + & { border-top: 1px solid $color-border; }
+
+    &--leida .notificaciones__nombre { color: $color-text-secondary; font-weight: 500; }
+  }
+
+  &__punto {
+    width: 8px;
+    height: 8px;
+    margin-top: 0.45rem;
+    flex: none;
+    border-radius: 50%;
+    background-color: $color-brand;
+
+    &--leido { background-color: transparent; }
+  }
+
+  &__texto { flex: 1 1 240px; min-width: 0; }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: $color-text-muted;
+  }
+
+  &__etiqueta {
+    padding: 0.1rem 0.5rem;
+    border-radius: $radius-sm;
+    font-size: 0.72rem;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &--accion { background-color: $color-primary-light; color: $color-primary-text; }
+    &--cambio { background-color: $color-surface-alt; color: $color-primary-text; box-shadow: inset 0 0 0 1px $color-primary-border; }
+    &--advertencia { background-color: $color-warning-light; color: $color-warning-text; }
+    &--peligro { background-color: $color-danger-light; color: $color-danger-text; }
+    &--exito { background-color: $color-success-light; color: $color-success-text; }
+  }
+
+  &__nombre { margin-top: 0.3rem; font-size: 0.95rem; font-weight: 600; overflow-wrap: anywhere; }
+  &__detalle { margin-top: 0.15rem; font-size: 0.85rem; color: $color-text-secondary; overflow-wrap: anywhere; }
+  &__acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  @include mobile {
+    &__filtros { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.25rem; }
+    &__filtro { flex: none; }
+    &__acciones { width: 100%; padding-left: 1.25rem; }
+  }
+}
+
+// Punto naranja del aviso en Inicio cuando algo espera la decisión de la persona.
+.pendientes__punto { width: 8px; height: 8px; flex: none; border-radius: 50%; background-color: $color-brand; }
+
+// Contador junto a «Notificaciones» en el menú (naranja: algo espera una decisión).
+.barra-lateral__contador {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: $radius-full;
+  background-color: $color-brand;
+  color: #1a1a1a;
+  font-size: 0.7rem;
+  font-weight: 600;
+  @include flex-center;
+
+  @include tablet {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 0;
+    padding: 0 4px;
+  }
+}
+
+.barra-lateral__enlace { position: relative; }
+
+@include mobile {
+  .barra-lateral__contador { top: 4px; right: calc(50% - 22px); }
+}
+
+// Aviso en Inicio cuando algo espera la decisión de la persona.
+.tablero-pendiente {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.85rem 1.1rem;
+  background-color: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+
+  p { flex: 1 1 220px; font-size: 0.9rem; }
+}

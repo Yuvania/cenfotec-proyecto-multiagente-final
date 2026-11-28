@@ -92,11 +92,13 @@ La estructura está en `src/styles/_layout.scss` (`.barra-lateral`) y se adapta 
 
 | Tamaño | Navegación | Contenido |
 |---|---|---|
-| **Web** (más de 1024 px) | Barra lateral ciruela de 232 px con logotipo, menú con texto y, abajo, la persona y el cambio de tema. | Hasta 1200 px de ancho, margen de 40 px. |
-| **Tablet** (641–1024 px) | Barra de 72 px solo con íconos; cada enlace conserva su nombre accesible y su texto emergente. | Margen de 24 px; las grillas pasan a dos columnas. |
-| **Móvil** (hasta 640 px) | Barra superior ciruela con el logotipo y la sesión; el menú pasa a una barra inferior fija con íconos y una etiqueta corta (`menu.corta` en `rutas.jsx`). | Una columna, margen de 16 px; los botones de ayuda flotan sobre la barra inferior. |
+| **Web** (más de 1024 px) | Barra lateral ciruela de 232 px con logotipo, menú con texto y, abajo, la persona y el cambio de tema. Los grupos (Mantenimiento) se despliegan con sus secciones en mayúsculas pequeñas (Seguridad, Calidad); la opción activa lleva el punto naranja. | Hasta 1200 px de ancho, margen de 40 px. Dentro de un grupo, arriba del título va la ruta: «Mantenimiento › Calidad › Pruebas automatizadas». |
+| **Tablet** (641–1024 px) | Barra de 72 px solo con íconos; cada enlace conserva su nombre accesible y su texto emergente. Un grupo abre un panel blanco al lado con sus secciones. | Margen de 24 px; las grillas pasan a dos columnas. |
+| **Móvil** (hasta 640 px) | Barra superior ciruela con el logotipo y la sesión; abajo, una barra fija con cuatro opciones: Inicio, Avisos, Historias y **Más**. «Más» abre una hoja con los grupos y Ayuda. | Una columna, margen de 16 px; los botones de ayuda flotan sobre la barra inferior. |
 
-Una opción de menú nueva necesita `etiqueta` y `corta` (máximo 9 letras) en `src/config/rutas.jsx`.
+El menú tiene cinco opciones: **Inicio**, **Notificaciones** (una sola lista con la categoría de cada notificación y filtros), **Historias de usuario** (el listado tiene el botón «Nueva historia»), **Mantenimiento** (*Seguridad*: Usuarios, Roles y acciones; *Calidad*: Pruebas automatizadas) y **Ayuda**.
+
+Una opción de menú nueva necesita `etiqueta` y `corta` (máximo 9 letras) en `src/config/rutas.jsx`. Solo las marcadas `barraMovil` van en la barra inferior del móvil; el resto va en «Más». Lo que es de administrar va en un grupo, no suelto.
 
 ## Modo claro y oscuro
 

@@ -357,11 +357,16 @@ class RepositorioHU:
                 creado_en=_now()))
 
     def listar_aviso(self, usuario_id: str, limite: int = 30) -> list[dict[str, Any]]:
-        """Avisos sin leer de la persona, del más reciente al más antiguo."""
-        consulta = (select(aviso).where(aviso.c.usuario_id == usuario_id, aviso.c.leido_en.is_(None))
-                    .order_by(aviso.c.creado_en.desc()).limit(limite))
+        """Últimos avisos de la persona: primero los sin leer y, dentro de cada grupo, del más reciente al más antiguo."""
+        consulta = (select(aviso).where(aviso.c.usuario_id == usuario_id)
+                    .order_by(aviso.c.leido_en.is_not(None), aviso.c.creado_en.desc()).limit(limite))
         with self.motor.connect() as conexion:
-            return [dict(fila._mapping) for fila in conexion.execute(consulta)]
+            return [{**dict(fila._mapping), "leido": fila.leido_en is not None} for fila in conexion.execute(consulta)]
+
+    def marcar_todo_aviso_leido(self, usuario_id: str) -> None:
+        with self.motor.begin() as conexion:
+            conexion.execute(update(aviso).where(aviso.c.usuario_id == usuario_id, aviso.c.leido_en.is_(None))
+                             .values(leido_en=_now()))
 
     def marcar_aviso_leido(self, aviso_id: str, usuario_id: str) -> None:
         with self.motor.begin() as conexion:

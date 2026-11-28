@@ -1,8 +1,10 @@
-"""Pendientes de la persona: lo que espera su decisión y los avisos sobre sus historias.
+"""Notificaciones de la persona (pantalla «Notificaciones»): lo que espera su decisión y los avisos sobre sus historias.
 
 - Espera su decisión: sale de los flujos guardados (``espera``) según las acciones de la persona:
   con «Aprobar historia», las historias por aprobar; con «Decidir sobre un cambio», los cambios por decidir.
-- Avisos: su historia fue aprobada, devuelta (con el motivo) o rechazada. Se marcan como leídos.
+- Avisos: su historia fue aprobada, devuelta (con el motivo) o rechazada. Se marcan como leídos (uno o todos)
+  y siguen en la lista, con menos énfasis, entre los últimos 30.
+- total: lo que espera decisión más los avisos sin leer (el número del menú).
 """
 from __future__ import annotations
 
@@ -42,7 +44,8 @@ def listar_pendiente(request: Request, usuario: Annotated[dict[str, Any], Depend
             })
     repositorio = _repositorio(request)
     avisos = repositorio.listar_aviso(usuario["id"]) if repositorio is not None else []
-    return {"por_decidir": por_decidir, "avisos": avisos, "total": len(por_decidir) + len(avisos)}
+    sin_leer = sum(1 for item in avisos if not item.get("leido"))
+    return {"por_decidir": por_decidir, "avisos": avisos, "total": len(por_decidir) + sin_leer}
 
 
 @router.post("/pendientes/avisos/{aviso_id}/leido", status_code=status.HTTP_204_NO_CONTENT,
@@ -54,3 +57,10 @@ def marcar_leido(
     repositorio = _repositorio(request)
     if repositorio is not None:
         repositorio.marcar_aviso_leido(aviso_id, usuario["id"])
+
+
+@router.post("/pendientes/avisos/leidos", status_code=status.HTTP_204_NO_CONTENT, dependencies=[requiere_sesion])
+def marcar_todo_leido(request: Request, usuario: Annotated[dict[str, Any], Depends(usuario_actual)]) -> None:
+    repositorio = _repositorio(request)
+    if repositorio is not None:
+        repositorio.marcar_todo_aviso_leido(usuario["id"])

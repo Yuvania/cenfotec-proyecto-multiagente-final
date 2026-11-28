@@ -17,6 +17,10 @@ Las rutas y el menú salen de un solo registro: `src/config/rutas.jsx`. No agreg
      menu: { etiqueta: 'Reportes', titulo: 'Ver reportes', icono: BarChart3, orden: 40 } },
    ```
    - Sin `menu` la pantalla existe pero no aparece en el menú (por ejemplo, un detalle `historias/:id`).
+   - **Grupos:** lo que es de administrar no va suelto en el menú. Va en un grupo de `listaGrupoMenu` (hoy, Mantenimiento con las secciones *Seguridad* y *Calidad*): la entrada lleva `menu.grupo` y `menu.seccion`, su ruta empieza por la del grupo (`mantenimiento/...`) y no lleva ícono. La ruta «Mantenimiento › Calidad › …» se arma sola.
+   - **Móvil:** solo las opciones con `barraMovil: true` van en la barra inferior (hoy Inicio, Notificaciones e Historias); las demás y los grupos van en «Más». No agregues más de cuatro a la barra.
+   - **Direcciones viejas:** si cambias una ruta, deja la vieja con `redirigir('/nueva')` para no romper enlaces guardados.
+   - Las acciones de una pantalla (por ejemplo, «Nueva historia») van como botón en la pantalla, no como opción del menú.
    - `orden` en decenas y único; `exacta: true` si la ruta no debe marcarse activa en sus subrutas.
    - Íconos de `lucide-react`.
    - Si solo deben verla algunos roles, agrega `accion: ACCION.X` (de `src/config/acciones.js`). Si la acción no existe, agrégala en `agentes/seguridad/catalogo.py` (con su nombre legible) y en `src/config/acciones.js`; las rutas de la API que use la pantalla declaran `requiere_accion(ACCION.X)`. No hace falta tocar Mantenimiento.

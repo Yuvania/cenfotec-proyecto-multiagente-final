@@ -16,26 +16,27 @@ const LISTA_USUARIO = [
   { id: 'u-an', usuario: 'analista.prueba', nombre: 'Analista de prueba', activo: false, roles: [{ id: 'rol-analista', nombre: 'Analista de negocio' }] },
 ];
 
-// Mantenimiento: usuarios con sus roles y roles con sus acciones (con nombres legibles, nunca códigos).
-test.describe('Mantenimiento', { tag: '@mantenimiento' }, () => {
+// Mantenimiento › Seguridad: usuarios con sus roles y roles con sus acciones (con nombres legibles, nunca códigos).
+test.describe('Mantenimiento › Seguridad', { tag: '@mantenimiento' }, () => {
   test.beforeEach(async ({ page }) => {
     await ingresarComo(page, USUARIO_ADMINISTRADOR);
     await page.route('**/api/analista/mantenimiento/acciones', (route) => route.fulfill({ status: 200, json: LISTA_ACCION }));
     await page.route('**/api/analista/mantenimiento/roles', (route) => route.fulfill({ status: 200, json: LISTA_ROL }));
     await page.route('**/api/analista/mantenimiento/usuarios**', (route) => route.fulfill({ status: 200, json: LISTA_USUARIO }));
-    await page.goto('/mantenimiento', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { level: 1, name: 'Mantenimiento' })).toBeVisible();
   });
 
-  test('lista los usuarios con sus roles', async ({ page }) => {
+  test('lista los usuarios con sus roles', { tag: '@usuarios' }, async ({ page }) => {
+    await page.goto('/mantenimiento/usuarios', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { level: 1, name: 'Usuarios' })).toBeVisible();
     const tabla = page.getByRole('table');
     await expect(tabla.getByText('Product Owner de prueba')).toBeVisible();
     await expect(tabla.getByText('analista.prueba')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Nuevo usuario' })).toBeVisible();
   });
 
-  test('las acciones de un rol se muestran por nombre y no por código', async ({ page }) => {
-    await page.getByRole('tab', { name: /Roles/ }).click();
+  test('las acciones de un rol se muestran por nombre y no por código', { tag: '@roles' }, async ({ page }) => {
+    await page.goto('/mantenimiento/roles', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { level: 1, name: 'Roles y acciones' })).toBeVisible();
     await page.getByRole('button', { name: /Product Owner/ }).click();
     const editor = page.getByRole('form', { name: 'Acciones de Product Owner' });
     await expect(editor.getByLabel('Aprobar historia')).toBeChecked();

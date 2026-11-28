@@ -7,10 +7,15 @@ const NUEVA_ID = '44444444-4444-4444-8444-444444444444';
 
 const CONFIGURACION = {
   configurado: true, faltante: [], repositorio: 'equipo/historias', rama: 'main', url_produccion: null,
+  lista_menu: [
+    { codigo: 'aplicacion', nombre: 'Toda la aplicación' },
+    { codigo: 'mantenimiento', nombre: 'Mantenimiento' },
+  ],
   lista_alcance: [
-    { codigo: 'regresion', nombre: 'Todos los módulos (regresión)', descripcion: 'Todas las pruebas.', permite_produccion: false },
-    { codigo: 'basicas', nombre: 'Solo las básicas (smoke)', descripcion: 'Ingreso y pantallas.', permite_produccion: true },
-    { codigo: 'historias', nombre: 'Crear historia (asistente)', descripcion: 'Asistente de 5 pasos.', permite_produccion: false },
+    { codigo: 'regresion', nombre: 'Todo (regresión)', descripcion: 'Todas las pruebas.', menu: 'aplicacion', permite_produccion: false },
+    { codigo: 'basicas', nombre: 'Solo las básicas (smoke)', descripcion: 'Ingreso y pantallas.', menu: 'aplicacion', permite_produccion: true },
+    { codigo: 'mantenimiento', nombre: 'Todo Mantenimiento', descripcion: 'Seguridad y Calidad.', menu: 'mantenimiento', permite_produccion: false },
+    { codigo: 'roles', nombre: 'Roles y acciones', descripcion: 'Roles y acciones.', menu: 'mantenimiento', permite_produccion: false },
   ],
   lista_ambiente: [
     { codigo: 'pruebas', nombre: 'Pruebas', descripcion: 'API simulada.' },
@@ -64,7 +69,7 @@ const panelCon = (lista, activa = null) => ({
   activa, lista_ejecucion: lista,
 });
 
-test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
+test.describe('Pruebas automatizadas', { tag: ['@mantenimiento', '@pruebas'] }, () => {
   test('pide una ejecución y muestra su avance', async ({ page }) => {
     let solicitud = null;
     await ingresarComo(page, USUARIO_ADMINISTRADOR);
@@ -78,7 +83,7 @@ test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
     });
 
     await test.step('Abre el tablero y ve los indicadores de la última ejecución', async () => {
-      await page.goto('/pruebas', { waitUntil: 'domcontentloaded' });
+      await page.goto('/mantenimiento/pruebas', { waitUntil: 'domcontentloaded' });
       await expect(page.getByRole('heading', { level: 1, name: 'Pruebas automatizadas' })).toBeVisible();
       const indicadores = page.getByLabel('Indicadores');
       await expect(indicadores.getByText('#012')).toBeVisible();
@@ -86,12 +91,14 @@ test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
       await expect(page.getByRole('cell', { name: '2 de 3' })).toBeVisible();
     });
 
-    await test.step('Elige regresión en Chromium y ejecuta', async () => {
+    await test.step('Elige Mantenimiento: aparecen solo sus pruebas; elige Roles y acciones y ejecuta', async () => {
       const formulario = page.getByRole('form', { name: 'Nueva ejecución' });
-      await formulario.getByLabel('Qué probar').selectOption('regresion');
+      await formulario.getByLabel('Opción del menú').selectOption('mantenimiento');
+      await expect(formulario.getByLabel('Qué probar').locator('option')).toHaveText(['Todo Mantenimiento', 'Roles y acciones']);
+      await formulario.getByLabel('Qué probar').selectOption('roles');
       await formulario.getByLabel('Navegador').selectOption('chromium');
       await formulario.getByRole('button', { name: 'Ejecutar pruebas' }).click();
-      await expect.poll(() => solicitud).toEqual({ alcance: 'regresion', ambiente: 'pruebas', navegador: 'chromium' });
+      await expect.poll(() => solicitud).toEqual({ alcance: 'roles', ambiente: 'pruebas', navegador: 'chromium' });
     });
 
     await test.step('Ve la ejecución en curso y su avance', async () => {
@@ -106,9 +113,10 @@ test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
     await ingresarComo(page, USUARIO_ADMINISTRADOR);
     await page.route('**/api/analista/pruebas/configuracion', (route) => route.fulfill({ status: 200, json: CONFIGURACION }));
     await page.route('**/api/analista/pruebas/ejecuciones', (route) => route.fulfill({ status: 200, json: panelCon([]) }));
-    await page.goto('/pruebas', { waitUntil: 'domcontentloaded' });
+    await page.goto('/mantenimiento/pruebas', { waitUntil: 'domcontentloaded' });
     const formulario = page.getByRole('form', { name: 'Nueva ejecución' });
     await formulario.getByLabel('Ambiente').selectOption('produccion');
+    await expect(formulario.getByLabel('Opción del menú').locator('option')).toHaveText(['Toda la aplicación']);
     await expect(formulario.getByLabel('Qué probar').locator('option')).toHaveText(['Solo las básicas (smoke)']);
   });
 
@@ -124,7 +132,7 @@ test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
     });
 
     await test.step('Abre los resultados desde el historial', async () => {
-      await page.goto('/pruebas', { waitUntil: 'domcontentloaded' });
+      await page.goto('/mantenimiento/pruebas', { waitUntil: 'domcontentloaded' });
       await page.getByRole('link', { name: 'Ver resultados de la ejecución #012' }).click();
       await expect(page.getByRole('heading', { level: 1, name: /Ejecución #012/ })).toBeVisible();
     });
@@ -144,7 +152,7 @@ test.describe('Pruebas automatizadas', { tag: '@pruebas' }, () => {
     await test.step('Vuelve a ejecutar solo los fallidos', async () => {
       await page.getByRole('button', { name: 'Volver a ejecutar los fallidos' }).click();
       await expect.poll(() => repetido).toBe(true);
-      await expect(page).toHaveURL(/\/pruebas$/);
+      await expect(page).toHaveURL(/\/mantenimiento\/pruebas$/);
     });
   });
 });

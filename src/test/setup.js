@@ -22,11 +22,12 @@ vi.mock('../services/seguridadApi.js', () => ({
   },
 }));
 
-// Pendientes: sin nada por decidir, salvo que una prueba diga otra cosa.
+// Notificaciones: sin nada por decidir, salvo que una prueba diga otra cosa.
 vi.mock('../services/pendientesApi.js', () => ({
   pendientesApi: {
     listar: vi.fn(async () => ({ por_decidir: [], avisos: [], total: 0 })),
     marcarLeido: vi.fn(async () => null),
+    marcarTodoLeido: vi.fn(async () => null),
   },
 }));
 

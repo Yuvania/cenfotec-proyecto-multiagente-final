@@ -1,12 +1,17 @@
 """Qué se puede probar, en qué ambiente y con qué navegador. Es el único registro de las suites.
 
-Cada alcance corresponde a una etiqueta de Playwright (``@historias``, ``@pendientes``...) que llevan las
-pruebas de ``e2e/``. El workflow ``.github/workflows/pruebas-e2e.yml`` ofrece las mismas opciones; una prueba de
-estructura revisa que las tres listas (este catálogo, las etiquetas de ``e2e/`` y el workflow) coincidan.
+Las suites se ordenan como el menú de la aplicación: primero se elige la opción del menú (Mantenimiento) y
+después lo que hay dentro (Usuarios, Roles y acciones, Pruebas automatizadas) o «Todo Mantenimiento».
+
+Cada alcance corresponde a una etiqueta de Playwright que llevan las pruebas de ``e2e/``. Una prueba lleva la
+etiqueta de su opción del menú y la de su pantalla: ``{ tag: ['@mantenimiento', '@roles'] }``. Así
+«Todo Mantenimiento» corre ``@mantenimiento`` y «Roles y acciones» solo ``@roles``.
+El workflow ``.github/workflows/pruebas-e2e.yml`` ofrece las mismas opciones; una prueba de estructura revisa
+que las tres listas (este catálogo, las etiquetas de ``e2e/`` y el workflow) coincidan.
 
 Para agregar una suite:
-1. Se agrega una línea en ``LISTA_ALCANCE`` con su etiqueta.
-2. Las pruebas nuevas en ``e2e/`` llevan esa etiqueta (``test.describe('...', { tag: '@x' }, ...)``).
+1. Se agrega una línea en ``LISTA_ALCANCE`` con su opción del menú y su etiqueta.
+2. Las pruebas nuevas en ``e2e/`` llevan esa etiqueta y la de su opción del menú.
 3. La opción se agrega en ``inputs.alcance.options`` del workflow.
 """
 from __future__ import annotations
@@ -20,6 +25,7 @@ class Alcance:
     nombre: str
     descripcion: str
     etiqueta: str | None  # None: todas las pruebas (regresión)
+    menu: str  # opción del menú a la que pertenece (LISTA_MENU)
     permite_produccion: bool = False
 
 
@@ -30,18 +36,32 @@ class Opcion:
     descripcion: str = ""
 
 
+# Opciones del menú que tienen pruebas, en el orden del menú de la aplicación.
+LISTA_MENU: tuple[Opcion, ...] = (
+    Opcion("aplicacion", "Toda la aplicación"),
+    Opcion("notificaciones", "Notificaciones"),
+    Opcion("historias", "Historias de usuario"),
+    Opcion("mantenimiento", "Mantenimiento"),
+)
+
 LISTA_ALCANCE: tuple[Alcance, ...] = (
-    Alcance("regresion", "Todos los módulos (regresión)", "Todas las pruebas de la aplicación.", None),
+    Alcance("regresion", "Todo (regresión)", "Todas las pruebas de la aplicación.", None, "aplicacion"),
     Alcance("basicas", "Solo las básicas (smoke)", "Inicio de sesión y que cada pantalla principal abra.",
-            "@basicas", permite_produccion=True),
-    Alcance("inicio-sesion", "Inicio de sesión", "Entrar, clave incorrecta y salir con confirmación.", "@inicio-sesion"),
-    Alcance("historias", "Crear historia (asistente)", "Requerimiento, preguntas a negocio, historia y aprobación.",
-            "@historias"),
-    Alcance("cambios", "Cambios a historias aprobadas", "Gestor de Cambios y registro manual.", "@cambios"),
-    Alcance("pendientes", "Pendientes", "Lo que espera decisión y los avisos por rol.", "@pendientes"),
-    Alcance("mantenimiento", "Mantenimiento", "Usuarios, roles y acciones.", "@mantenimiento"),
-    Alcance("exportar", "Exportar Word y PDF", "Descarga de la historia aprobada.", "@exportar"),
-    Alcance("pruebas", "Pruebas automatizadas", "El propio tablero de ejecuciones.", "@pruebas"),
+            "@basicas", "aplicacion", permite_produccion=True),
+    Alcance("inicio-sesion", "Inicio de sesión y menú", "Entrar, clave incorrecta y menú según el rol.",
+            "@inicio-sesion", "aplicacion"),
+    Alcance("notificaciones", "Todo Notificaciones", "Lo que espera decisión, avisos, categorías y filtros.",
+            "@notificaciones", "notificaciones"),
+    Alcance("historias", "Todo Historias de usuario", "Crear, cambiar y exportar historias.", "@historias", "historias"),
+    Alcance("crear-historia", "Crear historia (asistente)", "Requerimiento, preguntas a Negocio, historia y aprobación.",
+            "@crear-historia", "historias"),
+    Alcance("cambios", "Cambios a historias aprobadas", "Gestor de Cambios y registro manual.", "@cambios", "historias"),
+    Alcance("exportar", "Exportar Word y PDF", "Descarga de la historia aprobada.", "@exportar", "historias"),
+    Alcance("mantenimiento", "Todo Mantenimiento", "Seguridad (usuarios, roles y acciones) y Calidad (pruebas).",
+            "@mantenimiento", "mantenimiento"),
+    Alcance("usuarios", "Usuarios", "Usuarios y sus roles.", "@usuarios", "mantenimiento"),
+    Alcance("roles", "Roles y acciones", "Roles y las acciones que permiten, con nombres legibles.", "@roles", "mantenimiento"),
+    Alcance("pruebas", "Pruebas automatizadas", "El propio tablero de ejecuciones.", "@pruebas", "mantenimiento"),
 )
 
 AMBIENTE_PRUEBAS = "pruebas"
@@ -71,15 +91,22 @@ def alcance_de(codigo: str) -> Alcance | None:
     return _ALCANCE.get(codigo)
 
 
+def nombre_de_etiqueta(etiqueta: str) -> str:
+    """«roles» → «Roles y acciones», para mostrar el módulo de cada caso."""
+    alcance = next((a for a in LISTA_ALCANCE if a.etiqueta == f"@{etiqueta}"), None)
+    return alcance.nombre.removeprefix("Todo ") if alcance else etiqueta
+
+
 def nombre_de(lista: tuple[Opcion, ...], codigo: str) -> str:
     return next((o.nombre for o in lista if o.codigo == codigo), codigo)
 
 
 def como_dict() -> dict[str, list[dict[str, object]]]:
     return {
+        "lista_menu": [{"codigo": o.codigo, "nombre": o.nombre} for o in LISTA_MENU],
         "lista_alcance": [
             {"codigo": a.codigo, "nombre": a.nombre, "descripcion": a.descripcion, "etiqueta": a.etiqueta,
-             "permite_produccion": a.permite_produccion}
+             "menu": a.menu, "permite_produccion": a.permite_produccion}
             for a in LISTA_ALCANCE
         ],
         "lista_ambiente": [{"codigo": o.codigo, "nombre": o.nombre, "descripcion": o.descripcion} for o in LISTA_AMBIENTE],

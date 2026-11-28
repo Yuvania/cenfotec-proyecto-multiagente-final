@@ -64,8 +64,24 @@ def test_quien_creo_la_historia_recibe_el_aviso_de_devolucion_y_lo_marca_leido(r
     cliente = _cliente(repositorio, analista)
     avisos = cliente.get("/api/analista/pendientes").json()["avisos"]
     assert [(a["tipo"], a["detalle"], a["autor"]) for a in avisos] == [("devuelta", "Falta el criterio de menores", "Ana")]
+    assert avisos[0]["leido"] is False
     assert cliente.post(f"/api/analista/pendientes/avisos/{avisos[0]['id']}/leido").status_code == 204
-    assert cliente.get("/api/analista/pendientes").json()["total"] == 0
+    # El aviso leído sigue en la lista (con menos énfasis) y deja de contar en el número del menú.
+    respuesta = cliente.get("/api/analista/pendientes").json()
+    assert respuesta["total"] == 0
+    assert [(a["tipo"], a["leido"]) for a in respuesta["avisos"]] == [("devuelta", True)]
+
+
+def test_marcar_todo_como_leido_solo_toca_los_avisos_de_la_persona(repositorio):
+    for usuario_id, titulo in (("an", "Primera"), ("an", "Segunda"), ("otra", "De otra persona")):
+        repositorio.registrar_aviso(usuario_id=usuario_id, tipo="aprobada", workflow_id=None, titulo=titulo, autor="Ana")
+    analista = {"id": "an", "nombre": "Luis", "activo": True, "roles": [], "acciones": []}
+    cliente = _cliente(repositorio, analista)
+    assert cliente.get("/api/analista/pendientes").json()["total"] == 2
+    assert cliente.post("/api/analista/pendientes/avisos/leidos").status_code == 204
+    respuesta = cliente.get("/api/analista/pendientes").json()
+    assert respuesta["total"] == 0 and all(a["leido"] for a in respuesta["avisos"])
+    assert [a["leido"] for a in repositorio.listar_aviso("otra")] == [False]
 
 
 def test_teams_recibe_una_tarjeta_cuando_la_historia_queda_por_aprobar(monkeypatch):

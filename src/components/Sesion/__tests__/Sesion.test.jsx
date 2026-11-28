@@ -39,7 +39,7 @@ describe('sesión por usuario', () => {
 
   it('el menú y las decisiones del PO se filtran por acción', () => {
     const puede = (accion) => (Array.isArray(accion) ? accion : [accion]).some((codigo) => !codigo || PO.acciones.includes(codigo));
-    expect(listaOpcionMenu(puede).map((opcion) => opcion.etiqueta)).toEqual(['Inicio', 'Pendientes', 'Historias de usuario', 'Ayuda']);
+    expect(listaOpcionMenu(puede).map((opcion) => opcion.etiqueta)).toEqual(['Inicio', 'Notificaciones', 'Historias de usuario', 'Ayuda']);
     expect(opcionesPermitidas(OPCION_PO, puede).map(([valor]) => valor)).toEqual([
       'aprobar', 'devolver_analista', 'devolver_redactor', 'devolver_asesor',
     ]);

@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { TituloPaginaComponent } from '../Comun/TituloPaginaComponent';
 import { AlertaComponent } from '../Comun/AlertaComponent';
-import { SeccionesConPestanasComponent } from '../HistoriaUsuario/detalle/SeccionesConPestanasComponent';
 import { mantenimientoApi } from '../../services/seguridadApi';
 import { useSesion } from '../Sesion/SesionContext';
 import { UsuariosMantenimientoComponent } from './UsuariosMantenimientoComponent';
 import { RolesMantenimientoComponent } from './RolesMantenimientoComponent';
 
-// Mantenimiento: a los usuarios se les asignan o quitan roles y a los roles se les asignan o quitan acciones.
+// Mantenimiento › Seguridad: a los usuarios se les asignan o quitan roles y a los roles se les asignan o quitan
+// acciones. Son dos opciones del menú (Usuarios, y Roles y acciones) que comparten la carga de roles y acciones.
 // Las acciones salen del catálogo del backend: una acción nueva aparece aquí sin tocar esta pantalla.
-export const MantenimientoComponent = () => {
+const useSeguridad = () => {
   const { seguridad } = useSesion();
   const [listaRol, setListaRol] = useState([]);
   const [listaAccion, setListaAccion] = useState([]);
@@ -33,39 +33,41 @@ export const MantenimientoComponent = () => {
     });
   }, [seguridad, cargarRol]);
 
-  if (!seguridad) {
-    return (
-      <div>
-        <TituloPaginaComponent title="Mantenimiento" description="Usuarios, roles y acciones." />
-        <AlertaComponent type="info" title="La seguridad no está activa en este ambiente">
-          En desarrollo local (sin ACCESO_USUARIO y ACCESO_CLAVE) todas las acciones están permitidas y no hay usuarios.
-        </AlertaComponent>
-      </div>
-    );
-  }
+  return { seguridad, listaRol, listaAccion, error, cargarRol };
+};
 
-  const secciones = [
-    {
-      id: 'usuarios',
-      titulo: 'Usuarios',
-      contenido: <UsuariosMantenimientoComponent listaRol={listaRol} alCambiar={cargarRol} />,
-    },
-    {
-      id: 'roles',
-      titulo: 'Roles',
-      contador: listaRol.length || null,
-      contenido: <RolesMantenimientoComponent listaRol={listaRol} listaAccion={listaAccion} alCambiar={cargarRol} />,
-    },
-  ];
+const PaginaSeguridad = ({ titulo, descripcion, children, seguridad, error }) => (
+  <div>
+    <TituloPaginaComponent title={titulo} description={descripcion} />
+    {!seguridad ? (
+      <AlertaComponent type="info" title="La seguridad no está activa en este ambiente">
+        En desarrollo local (sin ACCESO_USUARIO y ACCESO_CLAVE) todas las acciones están permitidas y no hay usuarios.
+      </AlertaComponent>
+    ) : (
+      <>
+        {error && <AlertaComponent type="danger" title="No se pudo cargar">{error}</AlertaComponent>}
+        {children}
+      </>
+    )}
+  </div>
+);
 
+export const MantenimientoUsuariosComponent = () => {
+  const { seguridad, listaRol, error, cargarRol } = useSeguridad();
   return (
-    <div>
-      <TituloPaginaComponent
-        title="Mantenimiento"
-        description="Asigne roles a los usuarios y acciones a los roles. Un cambio aplica de inmediato."
-      />
-      {error && <AlertaComponent type="danger" title="No se pudo cargar">{error}</AlertaComponent>}
-      <SeccionesConPestanasComponent etiqueta="Secciones de mantenimiento" inicial="usuarios" secciones={secciones} />
-    </div>
+    <PaginaSeguridad titulo="Usuarios" descripcion="Busque a una persona y asígnele o quítele roles. Un cambio aplica de inmediato."
+      seguridad={seguridad} error={error}>
+      <UsuariosMantenimientoComponent listaRol={listaRol} alCambiar={cargarRol} />
+    </PaginaSeguridad>
+  );
+};
+
+export const MantenimientoRolesComponent = () => {
+  const { seguridad, listaRol, listaAccion, error, cargarRol } = useSeguridad();
+  return (
+    <PaginaSeguridad titulo="Roles y acciones" descripcion="Elija un rol y marque las acciones que permite. Un cambio aplica de inmediato."
+      seguridad={seguridad} error={error}>
+      <RolesMantenimientoComponent listaRol={listaRol} listaAccion={listaAccion} alCambiar={cargarRol} />
+    </PaginaSeguridad>
   );
 };

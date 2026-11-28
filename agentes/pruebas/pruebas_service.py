@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from agentes.notificaciones.teams_service import url_aplicacion
 from agentes.pruebas.catalogo_pruebas import (
     AMBIENTE_PRODUCCION, CODIGO_AMBIENTE, CODIGO_NAVEGADOR, LISTA_AMBIENTE, LISTA_NAVEGADOR, alcance_de, como_dict,
-    nombre_de,
+    nombre_de, nombre_de_etiqueta,
 )
 from agentes.pruebas.github_actions_service import GitHubActionsError, GitHubActionsService
 from agentes.pruebas.repositorio_pruebas import ESTADO_ACTIVO, ESTADO_FINAL, RepositorioPrueba
@@ -247,7 +247,9 @@ class PruebasService:
 
     def detalle(self, ejecucion: dict[str, Any]) -> dict[str, Any]:
         resumen = ejecucion.get("resumen") or {}
-        return {**self.publica(ejecucion), "casos": resumen.get("casos", [])}
+        lista_caso = [{**caso, "modulo_nombre": nombre_de_etiqueta(caso.get("modulo") or "")}
+                      for caso in resumen.get("casos", [])]
+        return {**self.publica(ejecucion), "casos": lista_caso}
 
     def obtener(self, ejecucion_id: str) -> dict[str, Any]:
         ejecucion = self.repositorio.obtener(ejecucion_id)

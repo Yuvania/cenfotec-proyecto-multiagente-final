@@ -65,7 +65,7 @@ const Caso = ({ caso }) => {
         {caso.error && <p className="pruebas__caso-error">{caso.error.split('\n')[0]}</p>}
         <DiagnosticoCaso diagnostico={caso.diagnostico} />
         <p className="pruebas__meta">
-          {[caso.modulo, DISPOSITIVO[caso.dispositivo] ?? caso.dispositivo, duracion(caso.duracion_ms)].filter(Boolean).join(' · ')}
+          {[caso.modulo_nombre || caso.modulo, DISPOSITIVO[caso.dispositivo] ?? caso.dispositivo, duracion(caso.duracion_ms)].filter(Boolean).join(' · ')}
           {caso.estado === 'inestable' ? ' · pasó al reintentar' : ''}
         </p>
         {(caso.pasos?.length > 0 || caso.error) && (
@@ -95,7 +95,7 @@ export const ResultadoPruebaComponent = () => {
       <div className="pruebas">
         <TituloPaginaComponent title="Resultados de la ejecución" />
         {error ? <AlertaComponent type="warning" title="No se pudo abrir">{error}</AlertaComponent> : <p className="pruebas__vacio">Consultando…</p>}
-        <Link className="btn btn--outline btn--sm" to="/pruebas"><ArrowLeft size={14} aria-hidden="true" /> Volver a Pruebas</Link>
+        <Link className="btn btn--outline btn--sm" to="/mantenimiento/pruebas"><ArrowLeft size={14} aria-hidden="true" /> Volver a Pruebas</Link>
       </div>
     );
   }
@@ -110,7 +110,7 @@ export const ResultadoPruebaComponent = () => {
     setErrorRepetir('');
     try {
       await pruebasApi.repetirFallidos(ejecucion.id);
-      navigate('/pruebas');
+      navigate('/mantenimiento/pruebas');
     } catch (fallo) {
       console.warn('No se pudieron repetir los fallidos:', fallo?.message ?? fallo);
       setErrorRepetir(fallo?.message || 'No se pudieron repetir los casos fallidos.');
@@ -132,7 +132,7 @@ export const ResultadoPruebaComponent = () => {
       />
 
       <div className="pruebas__acciones">
-        <Link className="btn btn--outline btn--sm" to="/pruebas"><ArrowLeft size={14} aria-hidden="true" /> Volver a Pruebas</Link>
+        <Link className="btn btn--outline btn--sm" to="/mantenimiento/pruebas"><ArrowLeft size={14} aria-hidden="true" /> Volver a Pruebas</Link>
         {ejecucion.run_url && (
           <a className="btn btn--secondary btn--sm" href={ejecucion.run_url} target="_blank" rel="noreferrer">
             <ExternalLink size={14} aria-hidden="true" /> Evidencias en GitHub

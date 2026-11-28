@@ -7,7 +7,7 @@ import { MODO_REAL, ingresarComo } from './soporte/ambiente.js';
 const LISTA_PANTALLA = [
   { ruta: '/', titulo: 'Panel de Historias de Usuario' },
   { ruta: '/historias', titulo: 'Historias de Usuario' },
-  { ruta: '/pendientes', titulo: 'Pendientes' },
+  { ruta: '/notificaciones', titulo: 'Notificaciones' },
   { ruta: '/ayuda', titulo: 'Centro de Ayuda y Documentación' },
 ];
 

@@ -37,7 +37,7 @@ export const TableroComponent = () => {
             <strong>{porDecidir.length === 1 ? '1 historia espera su decisión' : `${porDecidir.length} historias esperan su decisión`}</strong>
             {porDecidir.length === 1 ? ` · ${porDecidir[0].titulo}` : ''}
           </p>
-          <button type="button" className="btn btn--secondary btn--sm" onClick={() => navigate('/pendientes')}>Ver pendientes</button>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={() => navigate('/notificaciones')}>Ver notificaciones</button>
         </section>
       )}
 

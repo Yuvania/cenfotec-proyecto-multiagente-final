@@ -22,20 +22,25 @@ test.describe('Inicio de sesión', { tag: '@inicio-sesion' }, () => {
     });
   });
 
+  // En móvil algunas opciones van dentro de «Más»: se revisa que existan, aunque no estén a la vista.
+  // (Al incluir lo oculto, el nombre suma la etiqueta corta del móvil: por eso se compara el inicio.)
   test('el administrador ve todas las opciones del menú', async ({ page }) => {
     await ingresarComo(page, USUARIO_ADMINISTRADOR);
     const menu = page.getByRole('navigation', { name: 'Menú principal' });
-    for (const opcion of ['Inicio', 'Pendientes', 'Historias de usuario', 'Nueva historia', 'Pruebas', 'Mantenimiento', 'Ayuda']) {
-      await expect(menu.getByRole('link', { name: opcion, exact: true })).toBeVisible();
+    for (const opcion of ['Inicio', 'Notificaciones', 'Historias de usuario', 'Ayuda']) {
+      await expect(menu.getByRole('link', { name: new RegExp(`^${opcion}`), includeHidden: true })).toHaveCount(1);
     }
+    await expect(menu.getByRole('button', { name: /^Mantenimiento/, includeHidden: true })).toHaveCount(1);
+    await expect(menu.getByRole('link', { name: 'Nueva historia', includeHidden: true })).toHaveCount(0);
   });
 
-  test('un usuario de consulta no ve crear, pruebas ni mantenimiento', async ({ page }) => {
+  test('un usuario de consulta no ve Mantenimiento', async ({ page }) => {
     await ingresarComo(page, USUARIO_CONSULTA);
     const menu = page.getByRole('navigation', { name: 'Menú principal' });
-    await expect(menu.getByRole('link', { name: 'Historias de usuario', exact: true })).toBeVisible();
-    for (const opcion of ['Nueva historia', 'Pruebas', 'Mantenimiento']) {
-      await expect(menu.getByRole('link', { name: opcion, exact: true })).toHaveCount(0);
+    await expect(menu.getByRole('link', { name: /^Historias de usuario/, includeHidden: true })).toHaveCount(1);
+    await expect(menu.getByRole('button', { name: /^Mantenimiento/, includeHidden: true })).toHaveCount(0);
+    for (const opcion of ['Usuarios', 'Roles y acciones', 'Pruebas automatizadas']) {
+      await expect(menu.getByRole('link', { name: opcion, includeHidden: true })).toHaveCount(0);
     }
   });
 });

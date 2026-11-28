@@ -27,8 +27,9 @@ Proyecto desarrollado para el curso de Inteligencia Artificial de Cenfotec. El d
 - **Gestión de cambios:** las solicitudes de cambio sobre una HU aprobada se clasifican como aclaración o cambio de alcance, con propuesta de lecciones aprendidas.
 - **Acciones sobre una HU:** consulta, edición, solicitud de cambio, descarga en Word o PDF con plantilla configurable y eliminación.
 - **Roles, acciones y Mantenimiento:** inicio de sesión por usuario; cada rol tiene sus acciones (por ejemplo, solo el Product Owner aprueba) y se administran en la pestaña Mantenimiento.
-- **Pendientes y avisos:** el Product Owner ve lo que espera su aprobación; quien creó la historia ve si fue aprobada, devuelta con su motivo o rechazada. El aviso por Teams está preparado pero apagado hasta configurarlo (ver DESPLIEGUE.md).
-- **Pruebas automatizadas:** pestaña *Pruebas* para ejecutar las pruebas de Playwright (web, tablet y móvil) en GitHub Actions y ver sus resultados, con evidencias en GitHub.
+- **Notificaciones:** una sola lista con la categoría de cada notificación (Por aprobar, Cambio por decidir, Devuelta, Rechazada, Aprobada) y filtros. El Product Owner ve lo que espera su aprobación; quien creó la historia ve si fue aprobada, devuelta con su motivo o rechazada. El aviso por Teams está preparado pero apagado hasta configurarlo (ver DESPLIEGUE.md).
+- **Menú con propósito:** Inicio, Notificaciones, Historias de usuario (con «Nueva historia» en el listado), Mantenimiento (*Seguridad*: Usuarios, Roles y acciones; *Calidad*: Pruebas automatizadas) y Ayuda. En móvil: Inicio, Avisos, Historias y «Más».
+- **Pruebas automatizadas:** en Mantenimiento › Calidad, para ejecutar las pruebas de Playwright (web, tablet y móvil) en GitHub Actions y ver sus resultados, con evidencias en GitHub.
 - **Ayuda integrada** con el flujo, los agentes, las tecnologías y los temas pendientes de definición.
 
 ## Flujo de creación de una historia
@@ -194,7 +195,7 @@ npm run build            # compilación de producción
 
 GitHub Actions ejecuta todas las pruebas en cada cambio que llega a `main` y en cada pull request.
 
-**Pruebas automatizadas desde la aplicación:** la pestaña *Pruebas* arranca el workflow `pruebas-e2e.yml`, que levanta la aplicación en Docker dentro de GitHub y la recorre con Playwright (suites por módulo, en Chromium, Firefox o WebKit). El tablero muestra el avance, los casos con su error y permite repetir solo los fallidos; el reporte HTML, las capturas, los videos y las trazas quedan en GitHub. Se conecta con un solo token: [docs/pruebas-automatizadas.md](docs/pruebas-automatizadas.md).
+**Pruebas automatizadas desde la aplicación:** Mantenimiento › Pruebas automatizadas arranca el workflow `pruebas-e2e.yml`, que levanta la aplicación en Docker dentro de GitHub y la recorre con Playwright (se elige la opción del menú y después qué probar dentro de ella, en Chromium, Firefox o WebKit). El tablero muestra el avance, los casos con su error y permite repetir solo los fallidos; el reporte HTML, las capturas, los videos y las trazas quedan en GitHub. Se conecta con un solo token: [docs/pruebas-automatizadas.md](docs/pruebas-automatizadas.md).
 
 ## Despliegue
 

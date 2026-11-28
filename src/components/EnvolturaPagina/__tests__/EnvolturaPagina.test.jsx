@@ -29,7 +29,8 @@ describe('MainLayout', () => {
     expect(nav).not.toHaveTextContent(/skills/i);
     expect(nav).not.toHaveTextContent(/lecciones/i);
     expect(nav).toHaveTextContent('Inicio');
-    expect(nav).toHaveTextContent('Nueva historia');
+    expect(nav).toHaveTextContent('Notificaciones');
+    expect(nav).toHaveTextContent('Mantenimiento');
     expect(nav).toHaveTextContent('Ayuda');
   });
 

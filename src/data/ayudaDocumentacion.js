@@ -155,7 +155,7 @@ export const TECNOLOGIAS = [
   { titulo: 'Repositorio de código', texto: 'Un repositorio de GitHub de solo lectura (de ejemplo, codigo-ejemplo-polizas) que el Asesor Técnico revisa. Se copia al arrancar el servicio.' },
   { titulo: 'Datos', texto: 'TiDB Cloud (compatible con MySQL) como base compartida: historias, Repositorio de HU, cambios, lecciones y los flujos en proceso. En local y en pruebas, SQLite.' },
   { titulo: 'Trazabilidad', texto: 'Langfuse para seguir cada paso de los agentes, y registros del servidor que indican la causa cuando un flujo se detiene.' },
-  { titulo: 'Pruebas', texto: 'Vitest y Testing Library en la interfaz; pytest y pytest-asyncio en el backend; Playwright de punta a punta en web, tablet y móvil. GitHub Actions las ejecuta en cada cambio y, a pedido, desde la pestaña Pruebas.' },
+  { titulo: 'Pruebas', texto: 'Vitest y Testing Library en la interfaz; pytest y pytest-asyncio en el backend; Playwright de punta a punta en web, tablet y móvil. GitHub Actions las ejecuta en cada cambio y, a pedido, desde Mantenimiento › Pruebas automatizadas.' },
   { titulo: 'Despliegue', texto: 'Docker en una sola imagen (interfaz compilada, backend y OpenCode), publicada en Render con despliegue automático desde la rama main. Con docker compose la misma imagen corre en cualquier computadora.' },
 ];
 
@@ -166,7 +166,7 @@ export const PENDIENTES = [
   },
   {
     titulo: 'Avisos fuera de la aplicación',
-    texto: 'Ya existen Pendientes en la aplicación. El mensaje por Teams al Product Owner está preparado y se activa con la variable TEAMS_WEBHOOK_URL cuando el equipo lo decida. Falta elegir un aprobador específico cuando haya varios Product Owner y, si se quiere, sumar el aviso por correo.',
+    texto: 'Ya existen Notificaciones en la aplicación. El mensaje por Teams al Product Owner está preparado y se activa con la variable TEAMS_WEBHOOK_URL cuando el equipo lo decida. Falta elegir un aprobador específico cuando haya varios Product Owner y, si se quiere, sumar el aviso por correo.',
   },
   {
     titulo: 'Detalle técnico para Desarrollo',
@@ -192,7 +192,7 @@ export const PENDIENTES = [
 export const RESUMEN_ARQUITECTURA = [
   'Un equipo de agentes de IA convierte un requerimiento de Negocio en una historia de usuario lista para grooming. Las personas responden y deciden; ningún agente aprueba.',
   'Flujo: requerimiento → el Analista y el Asesor Técnico arman juntos una sola ronda de preguntas → Negocio responde → el Redactor escribe y el Revisor valida → el Product Owner aprueba, devuelve o rechaza → la HU queda en el Repositorio de HU.',
-  'El Product Owner ve en Pendientes lo que espera su aprobación; quien creó la historia ve ahí si fue aprobada, devuelta o rechazada.',
+  'El Product Owner ve en Notificaciones lo que espera su aprobación; quien creó la historia ve ahí si fue aprobada, devuelta o rechazada. Cada notificación lleva su categoría y se puede filtrar.',
   'Antes de cambiar algo: docs/arquitectura.md, docs/marca.md y las skills de .agents/skills. Las pruebas de estructura fallan si se rompe la estructura o el diseño.',
 ];
 
@@ -206,10 +206,10 @@ export const STACK_ARQUITECTURA = [
   { titulo: 'Datos: TiDB (MySQL) con SQLAlchemy', texto: 'Historias, Repositorio de HU, cambios, lecciones, flujos en proceso, usuarios, roles y avisos. En local y en pruebas se usa SQLite.' },
   { titulo: 'Trazabilidad: Langfuse', texto: 'Traza cada turno y cada etapa de los agentes. Los registros del servidor dicen la causa de un fallo sin guardar lo que generó el modelo.' },
   { titulo: 'Despliegue: Docker en Render', texto: 'Una sola imagen con la interfaz compilada, el backend y OpenCode. Se despliega solo con cada cambio en la rama main. docker-compose.yml levanta la misma imagen en cualquier computadora.' },
-  { titulo: 'Pruebas: Playwright en GitHub Actions', texto: 'La pestaña Pruebas arranca el workflow pruebas-e2e.yml con un token de GitHub; ahí se levanta la aplicación en Docker y Playwright la recorre en web, tablet y móvil. El tablero sigue el avance y guarda el resumen; las evidencias quedan en GitHub.' },
+  { titulo: 'Pruebas: Playwright en GitHub Actions', texto: 'Mantenimiento › Pruebas automatizadas arranca el workflow pruebas-e2e.yml con un token de GitHub; ahí se levanta la aplicación en Docker y Playwright la recorre en web, tablet y móvil. El tablero sigue el avance y guarda el resumen; las evidencias quedan en GitHub.' },
 ];
 
-// --- Pruebas automatizadas (pestaña Pruebas) ---------------------------------------------------
+// --- Pruebas automatizadas (Mantenimiento › Calidad › Pruebas automatizadas) ----------------------
 export const PRUEBAS_AUTOMATIZADAS = [
   {
     titulo: 'Qué son',
@@ -221,7 +221,7 @@ export const PRUEBAS_AUTOMATIZADAS = [
   },
   {
     titulo: 'Cómo se ejecutan',
-    texto: 'Pruebas → Nueva ejecución: elija qué probar (un módulo, todos o solo las básicas), el ambiente y el navegador, y presione Ejecutar pruebas. Solo hay una ejecución a la vez; el tablero muestra el avance y, al terminar, los casos con su error.',
+    texto: 'Mantenimiento › Pruebas automatizadas → Nueva ejecución: elija la opción del menú (Toda la aplicación, Notificaciones, Historias de usuario o Mantenimiento) y después qué probar dentro de ella (todo o una pantalla), el ambiente y el navegador, y presione Ejecutar pruebas. Solo hay una ejecución a la vez; el tablero muestra el avance y, al terminar, los casos con su error.',
     puntos: [
       'Ambiente Pruebas: la aplicación en un contenedor de GitHub, con la API simulada.',
       'Ambiente Producción (solo lectura): solo las básicas, contra la aplicación publicada con el usuario de QA. No crean ni cambian datos.',
@@ -255,7 +255,7 @@ export const PRUEBAS_AUTOMATIZADAS = [
   },
   {
     titulo: 'Agregar una prueba',
-    texto: 'Un archivo e2e/<modulo>.spec.js con la etiqueta de su suite (tag: \'@historias\'). Una suite nueva se registra en agentes/pruebas/catalogo_pruebas.py y en las opciones del workflow; una prueba de estructura revisa que las tres listas coincidan.',
+    texto: 'Un archivo e2e/<modulo>.spec.js con la etiqueta de su opción del menú y la de su pantalla (tag: [\'@mantenimiento\', \'@roles\']). Una suite nueva se registra en agentes/pruebas/catalogo_pruebas.py, con su opción del menú, y en las opciones del workflow; una prueba de estructura revisa que las tres listas coincidan.',
   },
 ];
 
@@ -287,9 +287,9 @@ export const TIPOGRAFIA_DISENO = [
 ];
 
 export const DISPOSITIVO_DISENO = [
-  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px.' },
-  { titulo: 'Tablet', texto: 'La barra queda en íconos de 72 px, con nombre accesible y texto emergente.' },
-  { titulo: 'Móvil', texto: 'Barra superior con la marca y la sesión; el menú pasa a una barra inferior con etiquetas cortas. Una columna y botones de 44 px.' },
+  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px. Mantenimiento se despliega con sus secciones (Seguridad y Calidad) y la pantalla muestra su ruta: Mantenimiento › Calidad › Pruebas automatizadas.' },
+  { titulo: 'Tablet', texto: 'La barra queda en íconos de 72 px, con nombre accesible y texto emergente. Mantenimiento abre un panel al lado con sus opciones.' },
+  { titulo: 'Móvil', texto: 'Barra superior con la marca y la sesión; abajo, Inicio, Avisos, Historias y «Más», que abre una hoja con Mantenimiento y Ayuda. Una columna y botones de 44 px.' },
   { titulo: 'Modo claro y oscuro', texto: 'Lo elige la persona; cada color tiene su par oscuro con contraste AA.' },
 ];
 

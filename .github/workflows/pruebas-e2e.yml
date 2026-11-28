@@ -32,11 +32,14 @@ on:
           - regresion
           - basicas
           - inicio-sesion
+          - notificaciones
           - historias
+          - crear-historia
           - cambios
-          - pendientes
-          - mantenimiento
           - exportar
+          - mantenimiento
+          - usuarios
+          - roles
           - pruebas
       navegador:
         description: Navegador

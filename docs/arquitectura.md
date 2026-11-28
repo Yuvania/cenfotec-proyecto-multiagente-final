@@ -88,7 +88,7 @@ src/
 | Acción nueva (permiso) | Una línea en `agentes/seguridad/catalogo.py` (código, nombre y módulo) y su código en `src/config/acciones.js`; la ruta de la API declara `requiere_accion(ACCION.X)` y la pantalla o el botón lleva `accion`. Aparece sola en Mantenimiento. |
 | Regla de negocio de un paso | El modelo Pydantic del contrato y el nodo del grafo; nunca en el prompt solamente. |
 | Prueba de punta a punta | Un `e2e/<modulo>.spec.js` con la etiqueta de su suite (`tag: '@modulo'`), con la API simulada (`e2e/soporte/ambiente.js`). |
-| Suite de pruebas nueva | Una línea en `agentes/pruebas/catalogo_pruebas.py` y la misma opción en `inputs.alcance` de `.github/workflows/pruebas-e2e.yml`. Aparece sola en la pestaña Pruebas. Ver `docs/pruebas-automatizadas.md`. |
+| Suite de pruebas nueva | Una línea en `agentes/pruebas/catalogo_pruebas.py` (con su opción del menú) y la misma opción en `inputs.alcance` de `.github/workflows/pruebas-e2e.yml`. Aparece sola en la pestaña Pruebas. Ver `docs/pruebas-automatizadas.md`. |
 
 Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 
@@ -99,7 +99,7 @@ Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 - **Seguridad:** inicio de sesión por usuario; usuarios con roles y roles con acciones (pestaña Mantenimiento), validados en cada ruta de la API; agentes sin permisos en OpenCode, herramientas MCP de solo lectura por rol, entradas tratadas como no confiables y aprobación siempre humana.
 - **Configuración por entorno:** claves y URLs por variables de entorno; despliegue en contenedor (ver `DESPLIEGUE.md`).
 - **Diseño:** marca «Ciruela corporativa» documentada en `docs/marca.md`; colores solo como variables de tema, dos familias tipográficas y una estructura que se adapta a web, tablet y móvil. Pruebas de estructura la protegen.
-- **Calidad:** pruebas de backend, frontend y extremo a extremo en la integración continua, más las pruebas de estructura. La pestaña Pruebas ejecuta las de Playwright (web, tablet y móvil) en GitHub Actions a pedido, con evidencias en GitHub.
+- **Calidad:** pruebas de backend, frontend y extremo a extremo en la integración continua, más las pruebas de estructura. Mantenimiento › Pruebas automatizadas ejecuta las de Playwright (web, tablet y móvil) en GitHub Actions a pedido, con evidencias en GitHub.
 - **Portabilidad:** `docker-compose.yml` levanta la misma imagen de Render en cualquier computadora, y las pruebas en su propia imagen de Playwright.
 
 ## Convenciones

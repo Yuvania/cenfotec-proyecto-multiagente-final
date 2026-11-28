@@ -6,7 +6,7 @@ Se pueden correr de tres formas, siempre con las mismas pruebas de `e2e/`:
 
 | Dónde | Cómo | Para qué |
 |---|---|---|
-| Tablero de la aplicación | Pestaña **Pruebas** → Ejecutar pruebas | El día a día: cualquiera con la acción «Ejecutar pruebas automatizadas» |
+| Tablero de la aplicación | **Mantenimiento › Calidad › Pruebas automatizadas** → Ejecutar pruebas | El día a día: cualquiera con la acción «Ejecutar pruebas automatizadas» |
 | Cualquier computadora con Docker | `docker compose --profile pruebas run --rm pruebas` | Probar antes de subir un cambio, sin instalar Node ni navegadores |
 | Desarrollo con Vite | `npm run test:e2e` | Escribir pruebas nuevas |
 
@@ -53,21 +53,26 @@ Si el repositorio no tiene `OPENCODE_API_KEY`, las pruebas corren igual y los ca
 - **Pruebas** (predeterminado): GitHub levanta la aplicación en Docker y las pruebas simulan la API con `page.route`. No gastan cuota del modelo, no crean datos y dan el mismo resultado siempre.
 - **Producción (solo lectura)**: solo las **básicas**, contra la aplicación publicada (`APP_URL` o `RENDER_EXTERNAL_URL`), ingresando con el usuario de QA. Solo leen: ingresar, abrir cada pantalla principal y salir.
 
-### Suites
+### Suites, por opción del menú
 
-| Alcance | Etiqueta | Qué cubre |
-|---|---|---|
-| Todos los módulos (regresión) | — | Todas las pruebas |
-| Solo las básicas (smoke) | `@basicas` | Ingreso, pantallas principales y salida (también en producción) |
-| Inicio de sesión | `@inicio-sesion` | Clave incorrecta, ingreso y menú según las acciones del rol |
-| Crear historia (asistente) | `@historias` | Requerimiento, preguntas a Negocio, historia y aprobación del PO |
-| Cambios a historias aprobadas | `@cambios` | Gestor de Cambios y registro manual |
-| Pendientes | `@pendientes` | Lo que espera decisión y avisos |
-| Mantenimiento | `@mantenimiento` | Usuarios, roles y acciones con nombres legibles |
-| Exportar Word y PDF | `@exportar` | Descarga de la historia aprobada |
-| Pruebas automatizadas | `@pruebas` | El propio tablero |
+En «Nueva ejecución» primero se elige la **opción del menú** y después aparecen solo las pruebas de lo que hay dentro de ella. Cada prueba lleva la etiqueta de su opción del menú y la de su pantalla (`{ tag: ['@mantenimiento', '@roles'] }`): «Todo Mantenimiento» corre `@mantenimiento` y «Roles y acciones», solo `@roles`.
 
-El registro único es `agentes/pruebas/catalogo_pruebas.py`. Una prueba de estructura (`test_pruebas.py`) revisa que coincida con las opciones del workflow y con las etiquetas de `e2e/`.
+| Opción del menú | Qué probar | Etiqueta | Qué cubre |
+|---|---|---|---|
+| Toda la aplicación | Todo (regresión) | — | Todas las pruebas |
+| | Solo las básicas (smoke) | `@basicas` | Ingreso, pantallas principales y salida (también en producción) |
+| | Inicio de sesión y menú | `@inicio-sesion` | Clave incorrecta, ingreso, menú según el rol, grupos y «Más» en móvil |
+| Notificaciones | Todo Notificaciones | `@notificaciones` | Lista única, categorías, filtros y avisos leídos |
+| Historias de usuario | Todo Historias de usuario | `@historias` | Todo lo de abajo |
+| | Crear historia (asistente) | `@crear-historia` | Requerimiento, preguntas a Negocio, historia y aprobación del PO |
+| | Cambios a historias aprobadas | `@cambios` | Gestor de Cambios y registro manual |
+| | Exportar Word y PDF | `@exportar` | Descarga de la historia aprobada |
+| Mantenimiento | Todo Mantenimiento | `@mantenimiento` | Todo lo de abajo |
+| | Usuarios | `@usuarios` | Usuarios y sus roles |
+| | Roles y acciones | `@roles` | Acciones con nombres legibles, nunca códigos |
+| | Pruebas automatizadas | `@pruebas` | El propio tablero |
+
+El registro único es `agentes/pruebas/catalogo_pruebas.py` (cada suite dice a qué opción del menú pertenece). Una prueba de estructura (`test_pruebas.py`) revisa que coincida con las opciones del workflow y con las etiquetas de `e2e/`.
 
 ## Configuración (una sola vez)
 
@@ -112,10 +117,10 @@ Get-Content reportes-pruebas\resumen.json | docker compose exec -T aplicacion py
 
 ## Escribir una prueba
 
-- Un archivo `e2e/<modulo>.spec.js`. Cada `test` o `test.describe` de primer nivel lleva la etiqueta de su suite: `test.describe('Pendientes', { tag: '@pendientes' }, () => { ... })`.
+- Un archivo `e2e/<modulo>.spec.js`. Cada `test` o `test.describe` de primer nivel lleva la etiqueta de su opción del menú y la de su pantalla: `test.describe('Usuarios', { tag: ['@mantenimiento', '@usuarios'] }, () => { ... })`. Importe `test` y `expect` de `./soporte/prueba.js` (registra consola y API para el Agente de Pruebas).
 - Use `e2e/soporte/ambiente.js`: `ingresarComo(page, usuario)`, `simularSesion`, `simularApiVacia` y `abrirSinSeguridad`. Simule la API con `page.route`; nunca dependa de datos del ambiente.
 - Busque los elementos como lo haría una persona: `getByRole`, `getByLabel`, `getByText`. Nada de clases CSS.
-- Use `test.step('Abre Pendientes', ...)`: los pasos aparecen en el tablero cuando un caso falla.
+- Use `test.step('Abre Notificaciones', ...)`: los pasos aparecen en el tablero cuando un caso falla.
 - Solo datos sintéticos: nada real del negocio ni datos personales.
 - Una prueba `@basicas` debe funcionar también en producción: solo lee y no asume datos.
 

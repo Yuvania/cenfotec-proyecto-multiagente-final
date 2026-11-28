@@ -91,7 +91,7 @@ async function fillRequirement(page) {
   await page.getByLabel('Descripción o información de negocio').fill('Consultar vigencia de póliza ficticia TEST-003.');
 }
 
-test('pre-grooming presenta análisis y HU, recoge respuestas y solicita aprobación explícita', { tag: '@historias' }, async ({ page }) => {
+test('pre-grooming presenta análisis y HU, recoge respuestas y solicita aprobación explícita', { tag: ['@historias', '@crear-historia'] }, async ({ page }) => {
   let phase = 0;
   let persisted = false;
   const requestBodies = [];
@@ -155,7 +155,7 @@ test('pre-grooming presenta análisis y HU, recoge respuestas y solicita aprobac
   expect(phase).toBe(2);
 });
 
-test('post-grooming muestra al Gestor de Cambios y registra solo tras aceptar la recomendación', { tag: '@cambios' }, async ({ page }) => {
+test('post-grooming muestra al Gestor de Cambios y registra solo tras aceptar la recomendación', { tag: ['@historias', '@cambios'] }, async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.evaluate(({ id }) => localStorage.setItem('historias_usuario_prototipo', JSON.stringify([
     { id, title: 'Poliza TEST-003', status: 'aprobada', approvedAt: '2030-01-01T00:00:00Z' },
@@ -198,7 +198,7 @@ test('post-grooming muestra al Gestor de Cambios y registra solo tras aceptar la
   expect(decisionRequest).toMatchObject({ kind: 'change_decision', interrupt_id: 'interrupt-change-1' });
 });
 
-test('el error 503 mantiene separado el modo manual', { tag: '@cambios' }, async ({ page }) => {
+test('el error 503 mantiene separado el modo manual', { tag: ['@historias', '@cambios'] }, async ({ page }) => {
   const manualWrites = [];
   let workflowResumeRequests = 0;
   await page.route('**/api/analista/repositorio/historias', (route) => route.fulfill({ status: 200, json: [{ id: storyId, titulo: 'Póliza TEST-003', aprobada_en: '2030-01-01T00:00:00Z' }] }));
@@ -233,7 +233,7 @@ test('el error 503 mantiene separado el modo manual', { tag: '@cambios' }, async
 });
 
 
-test('la interfaz identifica un flujo que no se encontró (404)', { tag: '@historias' }, async ({ page }) => {
+test('la interfaz identifica un flujo que no se encontró (404)', { tag: ['@historias', '@crear-historia'] }, async ({ page }) => {
   await page.route('**/api/workflows**', async (route) => {
     if (route.request().method() === 'GET') return route.fulfill({ status: 404, json: { error: { code: 'WORKFLOW_NOT_FOUND' } } });
     return route.fulfill({ status: 201, json: businessSnapshot() });

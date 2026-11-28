@@ -31,13 +31,23 @@ const Indicador = ({ etiqueta, valor, detalle, clase = '' }) => (
   </div>
 );
 
+// Primero la opción del menú (como en la aplicación) y después lo que hay dentro de ella.
 const NuevaEjecucion = ({ configuracion, bloqueada, enviando, alEjecutar }) => {
   const [ambiente, setAmbiente] = useState('pruebas');
+  const [menu, setMenu] = useState('aplicacion');
   const [alcance, setAlcance] = useState('regresion');
   const [navegador, setNavegador] = useState('chromium');
 
-  const listaAlcance = useMemo(() => (configuracion?.lista_alcance ?? [])
+  // En producción solo se ofrece lo que permite producción (las básicas, que solo leen).
+  const listaPermitida = useMemo(() => (configuracion?.lista_alcance ?? [])
     .filter((item) => ambiente !== 'produccion' || item.permite_produccion), [configuracion, ambiente]);
+  const listaMenu = useMemo(() => (configuracion?.lista_menu ?? [])
+    .filter((item) => listaPermitida.some((alcanceItem) => alcanceItem.menu === item.codigo)), [configuracion, listaPermitida]);
+  const listaAlcance = useMemo(() => listaPermitida.filter((item) => item.menu === menu), [listaPermitida, menu]);
+
+  useEffect(() => {
+    if (listaMenu.length && !listaMenu.some((item) => item.codigo === menu)) setMenu(listaMenu[0].codigo);
+  }, [listaMenu, menu]);
 
   useEffect(() => {
     if (listaAlcance.length && !listaAlcance.some((item) => item.codigo === alcance)) setAlcance(listaAlcance[0].codigo);
@@ -54,6 +64,13 @@ const NuevaEjecucion = ({ configuracion, bloqueada, enviando, alEjecutar }) => {
     <form className="pruebas__tarjeta pruebas__nueva" onSubmit={enviar} aria-label="Nueva ejecución">
       <h2 className="pruebas__subtitulo">Nueva ejecución</h2>
       <div className="pruebas__campos">
+        <SelectorComponent
+          id="prueba-menu"
+          label="Opción del menú"
+          value={menu}
+          onChange={(evento) => setMenu(evento.target.value)}
+          options={listaMenu.map((item) => ({ value: item.codigo, label: item.nombre }))}
+        />
         <SelectorComponent
           id="prueba-alcance"
           label="Qué probar"
@@ -218,7 +235,7 @@ export const PruebasComponent = () => {
                     <td data-etiqueta="Duración">{duracion(item.resumen?.duracion_ms)}</td>
                     <td data-etiqueta="Iniciada por">{item.iniciada_por || '—'}</td>
                     <td>
-                      <Link className="btn btn--outline btn--sm" to={`/pruebas/${item.id}`}
+                      <Link className="btn btn--outline btn--sm" to={`/mantenimiento/pruebas/${item.id}`}
                         aria-label={`Ver resultados de la ejecución ${numeroEjecucion(item.numero)}`}>
                         Ver resultados
                       </Link>

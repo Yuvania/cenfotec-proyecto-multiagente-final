@@ -36,11 +36,12 @@ export const usePendientes = () => {
     };
   }, [cargar]);
 
+  // El aviso leído sigue en la lista, con menos énfasis; solo deja de contar en el número del menú.
   const marcarLeido = useCallback(async (avisoId) => {
     setPendientes((actual) => ({
       ...actual,
-      avisos: actual.avisos.filter((aviso) => aviso.id !== avisoId),
-      total: Math.max(0, actual.total - 1),
+      avisos: actual.avisos.map((aviso) => (aviso.id === avisoId ? { ...aviso, leido: true } : aviso)),
+      total: Math.max(0, actual.total - (actual.avisos.some((aviso) => aviso.id === avisoId && !aviso.leido) ? 1 : 0)),
     }));
     try {
       await pendientesApi.marcarLeido(avisoId);
@@ -50,5 +51,19 @@ export const usePendientes = () => {
     avisarCambioPendientes();
   }, []);
 
-  return { ...pendientes, cargando, recargar: cargar, marcarLeido };
+  const marcarTodoLeido = useCallback(async () => {
+    setPendientes((actual) => ({
+      ...actual,
+      avisos: actual.avisos.map((aviso) => ({ ...aviso, leido: true })),
+      total: actual.por_decidir.length,
+    }));
+    try {
+      await pendientesApi.marcarTodoLeido();
+    } catch (error) {
+      console.warn('No se pudieron marcar los avisos como leídos:', error?.message ?? error);
+    }
+    avisarCambioPendientes();
+  }, []);
+
+  return { ...pendientes, cargando, recargar: cargar, marcarLeido, marcarTodoLeido };
 };

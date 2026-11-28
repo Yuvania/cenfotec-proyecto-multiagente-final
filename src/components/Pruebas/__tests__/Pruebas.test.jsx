@@ -15,9 +15,11 @@ vi.mock('../../../services/pruebasApi', () => ({
 
 const CONFIGURACION = {
   configurado: true, faltante: [],
+  lista_menu: [{ codigo: 'aplicacion', nombre: 'Toda la aplicación' }, { codigo: 'mantenimiento', nombre: 'Mantenimiento' }],
   lista_alcance: [
-    { codigo: 'regresion', nombre: 'Todos los módulos (regresión)', descripcion: 'Todo.', permite_produccion: false },
-    { codigo: 'basicas', nombre: 'Solo las básicas (smoke)', descripcion: 'Smoke.', permite_produccion: true },
+    { codigo: 'regresion', nombre: 'Todo (regresión)', descripcion: 'Todo.', menu: 'aplicacion', permite_produccion: false },
+    { codigo: 'basicas', nombre: 'Solo las básicas (smoke)', descripcion: 'Smoke.', menu: 'aplicacion', permite_produccion: true },
+    { codigo: 'usuarios', nombre: 'Usuarios', descripcion: 'Usuarios.', menu: 'mantenimiento', permite_produccion: false },
   ],
   lista_ambiente: [{ codigo: 'pruebas', nombre: 'Pruebas' }, { codigo: 'produccion', nombre: 'Producción (solo lectura)' }],
   lista_navegador: [{ codigo: 'chromium', nombre: 'Chromium' }],
@@ -49,13 +51,22 @@ describe('tablero de pruebas automatizadas', () => {
     expect(screen.getByRole('button', { name: 'Ejecutar pruebas' })).toBeDisabled();
   });
 
+  it('primero se elige la opción del menú y aparecen solo sus pruebas', async () => {
+    const usuario = userEvent.setup();
+    abrir();
+    await screen.findByRole('option', { name: 'Mantenimiento' });
+    await usuario.selectOptions(screen.getByLabelText('Opción del menú'), 'mantenimiento');
+    expect(screen.getByLabelText('Qué probar')).toHaveValue('usuarios');
+    expect(screen.queryByRole('option', { name: 'Todo (regresión)' })).not.toBeInTheDocument();
+  });
+
   it('envía lo que se eligió y en producción solo ofrece las básicas', async () => {
     const usuario = userEvent.setup();
     abrir();
-    await screen.findByRole('option', { name: 'Todos los módulos (regresión)' });
+    await screen.findByRole('option', { name: 'Todo (regresión)' });
     await usuario.selectOptions(screen.getByLabelText('Ambiente'), 'produccion');
     expect(screen.getByLabelText('Qué probar')).toHaveValue('basicas');
-    expect(screen.queryByRole('option', { name: 'Todos los módulos (regresión)' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Todo (regresión)' })).not.toBeInTheDocument();
     await usuario.click(screen.getByRole('button', { name: 'Ejecutar pruebas' }));
     await waitFor(() => expect(pruebasApi.ejecutar).toHaveBeenCalledWith({ alcance: 'basicas', ambiente: 'produccion', navegador: 'chromium' }));
   });
