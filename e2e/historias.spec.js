@@ -91,6 +91,59 @@ async function fillRequirement(page) {
   await page.getByLabel('Descripción o información de negocio').fill('Consultar vigencia de póliza ficticia TEST-003.');
 }
 
+test('los agentes trabajan en segundo plano: avance en vivo, reintento y luego las preguntas', { tag: ['@historias', '@crear-historia'] }, async ({ page }) => {
+  let terminar = false;
+  let pedidoAsincrono = false;
+  const momento = (segundos) => new Date(Date.UTC(2030, 0, 1, 10, 0, segundos)).toISOString();
+  const eventos = [
+    { tipo: 'inicio', momento: momento(0) },
+    { tipo: 'agente_inicio', agente: 'analista', momento: momento(1) },
+    { tipo: 'agente_consulta', agente: 'analista', herramientas: ['consultar_glosario', 'buscar_hu_similares'], momento: momento(2) },
+    { tipo: 'agente_fin', agente: 'analista', exitoso: true, intentos: 1, duracion_ms: 41000, momento: momento(42) },
+    { tipo: 'agente_inicio', agente: 'asesor_tecnico', momento: momento(43) },
+    { tipo: 'agente_reintento', agente: 'asesor_tecnico', intento: 1, de: 3, espera_ms: 2000, codigo: 'OPENCODE_UNAVAILABLE', momento: momento(50) },
+  ];
+  const fin = { tipo: 'fin', estado: 'listo', espera: 'business_answers', momento: momento(90) };
+  await page.route('**/api/workflows**', async (route) => {
+    const request = route.request();
+    const url = request.url();
+    if (request.method() === 'POST' && url.endsWith('/api/workflows')) {
+      pedidoAsincrono = request.headers().prefer === 'respond-async';
+      return route.fulfill({ status: 202, json: { workflow_id: 'workflow-pre-synthetic', en_curso: true } });
+    }
+    if (url.endsWith('/avance') && (request.headers().accept || '').includes('text/event-stream')) {
+      // El avance en vivo se corta antes del final: la aplicación sigue consultando cada pocos segundos.
+      const cuerpo = eventos.map((evento) => `event: ${evento.tipo}\ndata: ${JSON.stringify(evento)}\n\n`).join('');
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream' }, body: cuerpo });
+    }
+    if (url.endsWith('/avance')) {
+      return route.fulfill({ status: 200, json: terminar
+        ? { en_curso: false, eventos: [...eventos, fin], resultado: fin }
+        : { en_curso: true, eventos, resultado: null } });
+    }
+    return route.fulfill({ status: 200, json: businessSnapshot() });
+  });
+
+  await fillRequirement(page);
+  await page.getByRole('button', { name: 'Analizar Requerimiento' }).click();
+
+  await test.step('Ve en vivo qué agente trabaja, qué consulta y el reintento', async () => {
+    const avance = page.getByRole('region', { name: 'Avance de los agentes' });
+    await expect(avance).toBeVisible();
+    await expect(avance.getByRole('listitem').filter({ hasText: 'Agente Analista' })).toContainText('41 s');
+    const asesor = avance.getByRole('listitem').filter({ hasText: 'Asesor Técnico' });
+    await expect(asesor).toContainText('El proveedor del modelo no respondió. Reintento en 2 s (intento 2 de 4).');
+    await expect(avance.getByRole('button', { name: 'Ir a mis historias' })).toBeVisible();
+    expect(pedidoAsincrono).toBe(true);
+  });
+
+  await test.step('Al terminar, aparecen las preguntas para Negocio', async () => {
+    terminar = true;
+    await expect(page.getByRole('heading', { name: /Preguntas para Negocio/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('region', { name: 'Avance de los agentes' })).toBeHidden();
+  });
+});
+
 test('pre-grooming presenta análisis y HU, recoge respuestas y solicita aprobación explícita', { tag: ['@historias', '@crear-historia'] }, async ({ page }) => {
   let phase = 0;
   let persisted = false;

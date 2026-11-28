@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agentes.analista.core.agent_registry import AgentId, MAXIMO_RONDA_HERRAMIENTA, puede_consultar_asesor
 from agentes.analista.core.ejecutor_mcp import HerramientaDisponible, ResultadoHerramienta, SesionMCP
+from agentes.analista.core.avance import emitir
 from agentes.analista.core.presupuesto_evidencia import AjusteEvidencia, ajustar_observacion, estimar_token, presupuesto_configurado
 
 logger = logging.getLogger(__name__)
@@ -278,6 +279,10 @@ async def ejecutar_ciclo(
                 consulta=[{"herramienta": item.herramienta, "consulta": item.consulta} for item in consultas],
                 descartada=descartada,
             ))
+            if consultas:
+                # Para el avance en vivo: qué fuentes consulta el agente en esta ronda (solo los nombres).
+                emitir("agente_consulta", agente=agent_id.value, ronda=ronda,
+                       herramientas=sorted({item.herramienta for item in consultas}))
             resultado = await asyncio.gather(*(sesion.invocar(item.herramienta, item.consulta) for item in consultas))
             salida.resultado.extend(resultado)
             for item in resultado:
@@ -291,6 +296,7 @@ async def ejecutar_ciclo(
                 break
     # El Asesor se consulta con el servidor MCP propio ya cerrado: nunca hay dos procesos MCP a la vez.
     if solicitud_asesor and consultor_asesor is not None:
+        emitir("agente_consulta", agente=agent_id.value, herramientas=["consultar_asesor_tecnico"])
         try:
             evaluacion = await consultor_asesor(solicitud_asesor, contexto)
             salida.asesor = {"pregunta": solicitud_asesor, "evaluacion": evaluacion}

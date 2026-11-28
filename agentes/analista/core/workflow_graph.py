@@ -51,6 +51,8 @@ from agentes.analista.core.workflow_models import (
 )
 
 logger = logging.getLogger(__name__)
+# Aviso a quien creó la historia cuando los agentes terminan en segundo plano y nadie estaba mirando.
+TIPO_AVISO_LISTA = "lista"
 
 AnalystNode = Callable[[WorkflowState], Awaitable[AgentTurnResponse | Mapping[str, Any]]]
 DraftNode = Callable[[WorkflowState], Awaitable[StoryDraftContent | Mapping[str, Any]]]
@@ -1017,6 +1019,26 @@ class WorkflowRuntime:
         meta["reintentable"] = meta.get("estado") == "error" and self._puede_reintentar(identifier)
         return meta
 
+    def resumen_activo(self, workflow_id: UUID | str) -> dict[str, Any] | None:
+        """Un flujo en memoria con agentes trabajando, en la forma de ``listar`` (para la lista «En proceso»)."""
+        try:
+            identifier = self._resolve_workflow_id(workflow_id)
+        except WorkflowNotFoundError:
+            return None
+        meta = self._meta.get(identifier, {})
+        try:
+            valores = self._graph.get_state(self._thread_config(identifier)).values
+        except Exception as exc:
+            logger.info("Sin estado para el resumen del flujo %s: %s", identifier, type(exc).__name__)
+            valores = {}
+        ahora = datetime.now(UTC).isoformat(timespec="milliseconds")
+        return {
+            "id": str(identifier), "modo": str(valores.get("mode", "pre_grooming")), "titulo": meta.get("titulo") or "Sin título",
+            "creado_por": meta.get("creado_por"), "creado_por_usuario": meta.get("creado_por_usuario"),
+            "estado": "trabajando", "etapa": str(valores.get("current_stage", "analista")), "espera": None,
+            "creado_en": meta.get("creado_en") or ahora, "actualizado_en": ahora,
+        }
+
     def listar(self) -> list[dict[str, Any]]:
         if self._persistencia is None:
             return []
@@ -1064,6 +1086,42 @@ class WorkflowRuntime:
         await asyncio.to_thread(self._persistir, workflow_id)
         await asyncio.to_thread(self._cerrar_aviso_fallo, workflow_id)
         return _public_snapshot(result)
+
+    # --- Aviso de «lista para continuar» (agentes en segundo plano) -------------
+    _TEXTO_LISTA = {
+        "business_answers": "Las preguntas para Negocio están listas para responder.",
+        "product_owner_approval": "La historia está lista y espera la aprobación del Product Owner.",
+        "change_decision": "La recomendación del Gestor de Cambios está lista para decidir.",
+    }
+
+    def avisar_lista(self, workflow_id: UUID) -> None:
+        """Los agentes terminaron y nadie estaba mirando: se avisa a quien creó la historia qué sigue."""
+        meta = self._meta.get(workflow_id, {})
+        creador = meta.get("creado_por_usuario")
+        repositorio = self._persistencia
+        if not creador or repositorio is None or not hasattr(repositorio, "registrar_aviso"):
+            return
+        try:
+            pendiente = self.pending_interrupt(workflow_id)
+            texto = self._TEXTO_LISTA.get((pendiente or {}).get("payload", {}).get("kind") or "")
+            if texto is None:
+                return
+            repositorio.cerrar_aviso_flujo(workflow_id=str(workflow_id), tipo=TIPO_AVISO_LISTA)
+            repositorio.registrar_aviso(usuario_id=creador, tipo=TIPO_AVISO_LISTA,
+                                        titulo=meta.get("titulo") or "Sin título", workflow_id=str(workflow_id),
+                                        detalle=texto)
+        except Exception as fallo:
+            logger.warning("No se pudo avisar que el flujo %s está listo: %s", workflow_id, type(fallo).__name__)
+
+    def cerrar_aviso_lista(self, workflow_id: UUID) -> None:
+        """La persona abrió el flujo: el aviso «lista para continuar» ya cumplió."""
+        repositorio = self._persistencia
+        if repositorio is None or not hasattr(repositorio, "cerrar_aviso_flujo"):
+            return
+        try:
+            repositorio.cerrar_aviso_flujo(workflow_id=str(workflow_id), tipo=TIPO_AVISO_LISTA)
+        except Exception as fallo:
+            logger.warning("No se pudo cerrar el aviso del flujo %s: %s", workflow_id, type(fallo).__name__)
 
     # --- Aviso de fallo a quien creó la historia ------------------------------
     def _avisar_fallo(self, workflow_id: UUID, exc: BaseException) -> None:
@@ -1114,6 +1172,11 @@ class WorkflowRuntime:
 
     async def execute(self, request: WorkflowCreateRequest) -> WorkflowSnapshot:
         """Run pre-grooming through Analyst, Business interrupt, and writer/reviewer nodes."""
+        workflow_id, state = await self.preparar(request)
+        return await self.ejecutar_preparado(workflow_id, state)
+
+    async def preparar(self, request: WorkflowCreateRequest) -> tuple[UUID, WorkflowState]:
+        """Registra el flujo y deja listo su estado inicial, sin ejecutar agentes (rápido: para responder 202)."""
         request = WorkflowCreateRequest.model_validate(request)
         workflow_id = self._register(request)
         try:
@@ -1122,6 +1185,14 @@ class WorkflowRuntime:
                 self._conversation_ids[workflow_id] = conversation.conversation_id
             state = request.to_graph_state(workflow_id)
             state["execute_agents"] = True
+            return workflow_id, state
+        except Exception:
+            self._forget(workflow_id)
+            raise
+
+    async def ejecutar_preparado(self, workflow_id: UUID, state: WorkflowState) -> WorkflowSnapshot:
+        """Ejecuta un flujo preparado; si falla sin haber guardado nada, se olvida como antes."""
+        try:
             return await self._ejecutar(workflow_id, state)
         except Exception:
             if self._persistencia is not None and self._graph.get_state(self._thread_config(workflow_id)).values:

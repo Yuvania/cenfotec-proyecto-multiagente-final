@@ -43,6 +43,7 @@ export function useCrearHistoria() {
   const [workflowError, setWorkflowError] = useState('');
   const [workflowErrorStatus, setWorkflowErrorStatus] = useState(null);
   const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [avanceFlujo, setAvanceFlujo] = useState([]);
   const workflowOperationRef = useRef(false);
   const workflowControllerRef = useRef(null);
 
@@ -194,8 +195,11 @@ export function useCrearHistoria() {
     setWorkflowBusy(true);
     setWorkflowError('');
     setWorkflowErrorStatus(null);
+    setAvanceFlujo([]);
+    // Agentes en segundo plano: cada evento de avance se muestra en vivo mientras se espera el resultado.
+    const alAvance = (evento) => setAvanceFlujo((previo) => [...previo, { ...evento, recibido: Date.now() }]);
     try {
-      return await operation(controller.signal);
+      return await operation(controller.signal, alAvance);
     } catch (cause) {
       if (cause?.name === 'AbortError') return null;
       setWorkflowError(cause instanceof WorkflowApiError ? cause.message : 'No se pudo comunicar con el servicio del workflow.');
@@ -205,12 +209,13 @@ export function useCrearHistoria() {
       workflowOperationRef.current = false;
       workflowControllerRef.current = null;
       setWorkflowBusy(false);
+      setAvanceFlujo([]);
     }
   };
 
   const refreshWorkflow = async () => {
     if (!workflowResponse?.workflow_id) return;
-    const snapshot = await runWorkflowRequest((signal) => getWorkflow(workflowResponse.workflow_id, { signal }));
+    const snapshot = await runWorkflowRequest((signal, alAvance) => getWorkflow(workflowResponse.workflow_id, { signal, alAvance }));
     if (snapshot) setWorkflowSnapshot(snapshot);
   };
 
@@ -222,7 +227,7 @@ export function useCrearHistoria() {
     const requirement = buildRequirementMessage(
       { name: requirementName, infoType, description, system, codigoHu: normalizarCodigoHu(codigoHu), requestType },
     );
-    const snapshot = await runWorkflowRequest((signal) => startWorkflow({ mode: 'pre_grooming', requirement, ...datosParaRetomar() }, { signal }));
+    const snapshot = await runWorkflowRequest((signal, alAvance) => startWorkflow({ mode: 'pre_grooming', requirement, ...datosParaRetomar() }, { signal, alAvance }));
     if (snapshot) setWorkflowSnapshot(snapshot);
   };
 
@@ -245,7 +250,7 @@ export function useCrearHistoria() {
   // Vuelve a ejecutar el paso que falló, desde el último punto guardado.
   const reintentarFlujo = async () => {
     if (!workflowResponse?.workflow_id) return;
-    const snapshot = await runWorkflowRequest((signal) => retryWorkflow(workflowResponse.workflow_id, { signal }));
+    const snapshot = await runWorkflowRequest((signal, alAvance) => retryWorkflow(workflowResponse.workflow_id, { signal, alAvance }));
     if (snapshot) setWorkflowSnapshot(snapshot);
   };
 
@@ -268,7 +273,7 @@ export function useCrearHistoria() {
     const body = pedido.kind === 'po_approval' && pedido.response?.decision === 'aprobar' && notaAprobacion
       ? { ...pedido, response: { ...pedido.response, reason: notaAprobacion } }
       : pedido;
-    const snapshot = await runWorkflowRequest((signal) => resumeWorkflow(workflowId, body, { signal }));
+    const snapshot = await runWorkflowRequest((signal, alAvance) => resumeWorkflow(workflowId, body, { signal, alAvance }));
     if (!snapshot) {
       await actualizarTrasError(workflowId);
       return;
@@ -326,7 +331,7 @@ export function useCrearHistoria() {
   useEffect(() => {
     if (!flujoRetomado) return;
     (async () => {
-      const snapshot = await runWorkflowRequest((signal) => getWorkflow(flujoRetomado, { signal }));
+      const snapshot = await runWorkflowRequest((signal, alAvance) => getWorkflow(flujoRetomado, { signal, alAvance }));
       if (snapshot) {
         restaurarFormulario(snapshot.guardado?.formulario);
         setAnalyzedSignature('retomado');
@@ -380,11 +385,11 @@ export function useCrearHistoria() {
       return;
     }
 
-    const snapshot = await runWorkflowRequest((signal) => startWorkflow({
+    const snapshot = await runWorkflowRequest((signal, alAvance) => startWorkflow({
       mode: 'pre_grooming',
       requirement: message,
       ...datosParaRetomar(),
-    }, { signal }));
+    }, { signal, alAvance }));
     if (snapshot) {
       setWorkflowSnapshot(snapshot);
       setAnalyzedSignature(signature);
@@ -435,7 +440,7 @@ export function useCrearHistoria() {
       };
       setFormError('');
       const workflowId = workflowResponse.workflow_id;
-      const snapshot = await runWorkflowRequest((signal) => resumeWorkflow(workflowId, resumeBody, { signal }));
+      const snapshot = await runWorkflowRequest((signal, alAvance) => resumeWorkflow(workflowId, resumeBody, { signal, alAvance }));
       if (snapshot) setWorkflowSnapshot(snapshot);
       else await actualizarTrasError(workflowId);
       return;
@@ -701,6 +706,7 @@ export function useCrearHistoria() {
     workflowErrorStatus,
     setWorkflowErrorStatus,
     workflowBusy,
+    avanceFlujo,
     setWorkflowBusy,
     workflowOperationRef,
     workflowControllerRef,

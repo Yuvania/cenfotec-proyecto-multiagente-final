@@ -1,13 +1,21 @@
-"""Public HTTP boundary for the in-memory LangGraph workflows."""
+"""Public HTTP boundary for the in-memory LangGraph workflows.
+
+Agentes en segundo plano: con el encabezado ``Prefer: respond-async`` (RFC 7240), crear, responder y reintentar
+responden 202 al instante y los agentes trabajan aparte (``core/segundo_plano.py``). El avance se sigue en
+``GET /{id}/avance`` (JSON) o en vivo con ``Accept: text/event-stream`` (SSE); al terminar, ``GET /{id}`` da el
+resultado. Sin ese encabezado, la solicitud espera a los agentes como siempre.
+"""
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Request, status
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from agentes.analista.api.errors import WorkflowApiError
@@ -20,6 +28,7 @@ from agentes.analista.core.opencode_client import OpenCodeClientError
 from agentes.equipo.analista.analista_service import OrchestrationError
 from agentes.equipo.redactor_revisor.redactor_revisor_service import WriterOutputError
 from agentes.equipo.asesor_tecnico.asesor_tecnico_service import TechnicalAdvisorError, TechnicalAdvisorOutputError
+from agentes.analista.core.segundo_plano import SegundoPlanoService
 from agentes.analista.core.workflow_graph import (
     WorkflowDependencyError,
     WorkflowNotFoundError,
@@ -186,6 +195,76 @@ class BorradorRespuestas(BaseModel):
 
 def _runtime(request: Request) -> WorkflowRuntime:
     return request.app.state.workflow_runtime
+
+
+# --- Agentes en segundo plano ---------------------------------------------------------------------------------
+_SEGUNDOS_LATIDO = 15
+
+
+def _servicio_fondo(request: Request) -> SegundoPlanoService | None:
+    return getattr(request.app.state, "segundo_plano", None)
+
+
+def _en_segundo_plano(request: Request) -> bool:
+    """La interfaz lo pide con ``Prefer: respond-async``; sin el servicio, se responde como siempre."""
+    return "respond-async" in request.headers.get("prefer", "").lower() and _servicio_fondo(request) is not None
+
+
+async def _reservar(request: Request, workflow_id: UUID) -> None:
+    guard: asyncio.Lock = request.app.state.workflow_operation_guard
+    active: set[UUID] = request.app.state.workflow_active_operations
+    async with guard:
+        if workflow_id in active:
+            raise WorkflowApiError(ErrorCode.WORKFLOW_NOT_WAITING, "Ya existe una operación activa para este workflow.",
+                                   status_code=409, retryable=True)
+        active.add(workflow_id)
+
+
+async def _liberar(request: Request, workflow_id: UUID) -> None:
+    async with request.app.state.workflow_operation_guard:
+        request.app.state.workflow_active_operations.discard(workflow_id)
+
+
+def _error_publico(exc: BaseException) -> dict[str, Any]:
+    """El error ya traducido para la persona (el mismo que daría la solicitud que espera), para el evento «fin»."""
+    error = exc if isinstance(exc, WorkflowApiError) else _translate_runtime_error(exc)
+    return {
+        "code": getattr(error.code, "value", error.code), "status": error.status_code, "message": error.message,
+        "retryable": error.retryable, "retry_at": error.retry_at.isoformat() if error.retry_at else None,
+    }
+
+
+def _aceptado(workflow_id: UUID) -> JSONResponse:
+    return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content={
+        "workflow_id": str(workflow_id), "en_curso": True, "avance": f"/api/workflows/{workflow_id}/avance",
+    })
+
+
+async def _lanzar(request: Request, runtime: WorkflowRuntime, workflow_id: UUID, operacion: Any,
+                  despues: Any = None) -> JSONResponse:
+    """Reserva el flujo, lo pone en la cola y responde 202. Al terminar: avisos y, si nadie miraba, «lista»."""
+    await _reservar(request, workflow_id)
+
+    async def trabajar() -> WorkflowSnapshot:
+        try:
+            return await operacion()
+        finally:
+            await _liberar(request, workflow_id)
+
+    def al_terminar(snapshot: WorkflowSnapshot, mirando: bool) -> dict[str, Any]:
+        if despues is not None:
+            despues()
+        if not mirando:
+            runtime.avisar_lista(workflow_id)
+        return {"espera": _espera_actual(runtime, workflow_id), "etapa": getattr(snapshot.current_stage, "value", None)}
+
+    try:
+        _servicio_fondo(request).lanzar(workflow_id, trabajar, al_terminar=al_terminar, traducir_error=_error_publico)
+    except RuntimeError as exc:
+        await _liberar(request, workflow_id)
+        raise WorkflowApiError(ErrorCode.WORKFLOW_NOT_WAITING, "Ya existe una operación activa para este workflow.",
+                               status_code=409, retryable=True) from exc
+    return _aceptado(workflow_id)
 
 
 @asynccontextmanager
@@ -466,6 +545,21 @@ def _avisar(request: Request, runtime: WorkflowRuntime, workflow_id: UUID, *, es
         logger.warning("aviso_fallido", extra={"event": "aviso_fallido", "error": type(exc).__name__})
 
 
+def _validar_respuesta(runtime: WorkflowRuntime, workflow_id: UUID, body: Any, usuario: dict[str, Any]) -> str | None:
+    """Permiso y que la respuesta corresponda a la pausa pendiente. Devuelve qué esperaba el flujo."""
+    snapshot = runtime.get(workflow_id)
+    _exigir_permiso_respuesta(body, usuario)
+    expected_kind = _expected_interrupt_kind(snapshot)
+    active = runtime.pending_interrupt(workflow_id)
+    if expected_kind is None or active is None:
+        raise WorkflowNotInterruptedError("No hay interrupción pendiente.")
+    internal_kind = active["payload"].get("kind")
+    kind = {"product_owner_approval": "po_approval"}.get(internal_kind, internal_kind)
+    if kind != expected_kind or kind != body.kind or active["interrupt_id"] != body.interrupt_id:
+        raise WorkflowNotInterruptedError("La respuesta no corresponde a la interrupción pendiente.")
+    return internal_kind
+
+
 def _expected_interrupt_kind(snapshot: WorkflowSnapshot) -> str | None:
     if snapshot.current_stage == WorkflowStage.BUSINESS_WAIT:
         return "business_answers"
@@ -481,7 +575,19 @@ def list_workflows(request: Request) -> list[WorkflowResumen]:
     """Flujos guardados que se pueden retomar, del más reciente al más antiguo."""
     runtime = _runtime(request)
     try:
-        return [WorkflowResumen(workflow_id=item.pop("id"), **item) for item in runtime.listar()]
+        lista = runtime.listar()
+        # Los flujos con agentes trabajando ahora se muestran «trabajando», aunque todavía no estén guardados.
+        servicio = _servicio_fondo(request)
+        en_curso = servicio.lista_en_curso() if servicio is not None else set()
+        for item in lista:
+            if str(item["id"]) in en_curso:
+                item["estado"], item["espera"] = "trabajando", None
+        vistos = {str(item["id"]) for item in lista}
+        for workflow_id in sorted(en_curso - vistos):
+            activo = runtime.resumen_activo(workflow_id)
+            if activo is not None:
+                lista.insert(0, activo)
+        return [WorkflowResumen(workflow_id=item.pop("id"), **item) for item in lista]
     except Exception as exc:
         raise _translate_runtime_error(exc) from exc
 
@@ -512,6 +618,12 @@ def save_workflow_draft(workflow_id: UUID, body: BorradorRespuestas, request: Re
 async def retry_workflow(workflow_id: UUID, request: Request) -> WorkflowApiResponse:
     """Vuelve a ejecutar el paso que falló, desde el último punto guardado."""
     runtime = _runtime(request)
+    if _en_segundo_plano(request):
+        try:
+            identifier = runtime.get(workflow_id).workflow_id
+        except Exception as exc:
+            raise _translate_runtime_error(exc) from exc
+        return await _lanzar(request, runtime, identifier, lambda: runtime.reintentar(identifier))
     async with _exclusive_operation(request, workflow_id):
         try:
             return _serialize(runtime, await runtime.reintentar(workflow_id))
@@ -529,6 +641,14 @@ async def create_workflow(
         # Quién inicia el flujo lo dice la sesión, no el navegador.
         body = body.model_copy(update={"creado_por": usuario["nombre"], "creado_por_usuario": usuario["id"]})
     runtime = _runtime(request)
+    if _en_segundo_plano(request):
+        try:
+            workflow_id, estado = await runtime.preparar(body)
+        except Exception as exc:
+            raise _translate_runtime_error(exc) from exc
+        return await _lanzar(
+            request, runtime, workflow_id, lambda: runtime.ejecutar_preparado(workflow_id, estado),
+            lambda: _avisar(request, runtime, workflow_id, espera_previa=None, usuario=usuario))
     try:
         snapshot = await runtime.execute(body)
     except Exception as exc:
@@ -538,12 +658,60 @@ async def create_workflow(
 
 
 @router.get("/{workflow_id}", response_model=WorkflowApiResponse, dependencies=[requiere_accion(ACCION.HISTORIA_VER)])
-def get_workflow(workflow_id: UUID, request: Request) -> WorkflowApiResponse:
+def get_workflow(workflow_id: UUID, request: Request,
+                 usuario: Annotated[dict[str, Any], Depends(usuario_actual)]) -> WorkflowApiResponse:
     runtime = _runtime(request)
+    servicio = _servicio_fondo(request)
+    if _en_segundo_plano(request) and servicio is not None and servicio.en_curso(workflow_id):
+        return _aceptado(workflow_id)  # los agentes siguen trabajando: siga el avance
     try:
-        return _serialize(runtime, runtime.get(workflow_id))
+        snapshot = runtime.get(workflow_id)
+        if runtime.metadatos(workflow_id).get("creado_por_usuario") == usuario["id"]:
+            runtime.cerrar_aviso_lista(snapshot.workflow_id)  # ya lo abrió: el aviso «lista» cumplió
+        return _serialize(runtime, snapshot)
     except Exception as exc:
         raise _translate_runtime_error(exc) from exc
+
+
+@router.get("/{workflow_id}/avance", dependencies=[requiere_accion(ACCION.HISTORIA_VER)])
+async def follow_workflow(workflow_id: UUID, request: Request) -> Any:
+    """Avance de los agentes en segundo plano: JSON con los eventos, o en vivo (SSE) con
+    ``Accept: text/event-stream``. Un flujo sin ejecución en segundo plano responde ``en_curso: false``."""
+    servicio = _servicio_fondo(request)
+    estado = servicio.estado(workflow_id) if servicio is not None else None
+    if "text/event-stream" not in request.headers.get("accept", ""):
+        return estado or {"workflow_id": str(workflow_id), "en_curso": False, "eventos": [], "resultado": None}
+
+    async def eventos():
+        anteriores, cola = servicio.suscribir(workflow_id) if servicio is not None else ([], None)
+        try:
+            yield ": conectado\n\n"
+            for evento in anteriores:
+                yield _sse(evento)
+            if cola is None and not any(evento["tipo"] == "fin" for evento in anteriores):
+                yield _sse({"tipo": "fin", "estado": "desconocido"})
+                return
+            while cola is not None:
+                if await request.is_disconnected():
+                    return
+                try:
+                    evento = await asyncio.wait_for(cola.get(), timeout=_SEGUNDOS_LATIDO)
+                except asyncio.TimeoutError:
+                    yield ": latido\n\n"  # mantiene viva la conexión a través de proxies
+                    continue
+                yield _sse(evento)
+                if evento["tipo"] == "fin":
+                    return
+        finally:
+            if servicio is not None:
+                servicio.desuscribir(workflow_id, cola)
+
+    return StreamingResponse(eventos(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
+
+
+def _sse(evento: dict[str, Any]) -> str:
+    return f"event: {evento.get('tipo', 'avance')}\ndata: {json.dumps(evento, ensure_ascii=False)}\n\n"
 
 
 @router.post("/{workflow_id}/resume", response_model=WorkflowApiResponse, dependencies=[requiere_sesion])
@@ -554,18 +722,23 @@ async def resume_workflow(
     usuario: Annotated[dict[str, Any], Depends(usuario_actual)],
 ) -> WorkflowApiResponse:
     runtime = _runtime(request)
+    if _en_segundo_plano(request):
+        servicio = _servicio_fondo(request)
+        if servicio.en_curso(workflow_id):
+            raise WorkflowApiError(ErrorCode.WORKFLOW_NOT_WAITING, "Ya existe una operación activa para este workflow.",
+                                   status_code=409, retryable=True)
+        try:
+            internal_kind = _validar_respuesta(runtime, workflow_id, body, usuario)
+        except Exception as exc:
+            raise _translate_runtime_error(exc) from exc
+        decision_po = body.response if body.kind == "po_approval" else None
+        return await _lanzar(
+            request, runtime, workflow_id, lambda: runtime.resume(workflow_id, body.response),
+            lambda: _avisar(request, runtime, workflow_id, espera_previa=internal_kind, usuario=usuario,
+                            decision_po=decision_po))
     async with _exclusive_operation(request, workflow_id):
         try:
-            snapshot = runtime.get(workflow_id)
-            _exigir_permiso_respuesta(body, usuario)
-            expected_kind = _expected_interrupt_kind(snapshot)
-            active = runtime.pending_interrupt(workflow_id)
-            if expected_kind is None or active is None:
-                raise WorkflowNotInterruptedError("No hay interrupción pendiente.")
-            internal_kind = active["payload"].get("kind")
-            kind = {"product_owner_approval": "po_approval"}.get(internal_kind, internal_kind)
-            if kind != expected_kind or kind != body.kind or active["interrupt_id"] != body.interrupt_id:
-                raise WorkflowNotInterruptedError("La respuesta no corresponde a la interrupción pendiente.")
+            internal_kind = _validar_respuesta(runtime, workflow_id, body, usuario)
             updated = await runtime.resume(workflow_id, body.response)
         except Exception as exc:
             raise _translate_runtime_error(exc) from exc

@@ -125,6 +125,12 @@ export const PREGUNTAS_AYUDA = [
       'Cada respuesta del modelo guarda sus tokens y su costo, asociados a la historia y al agente. En Mantenimiento › Métricas › Consumo del modelo se ve el costo promedio por historia creada y por cambio, por agente y por día; en el detalle de una historia, la pestaña «Consumo del modelo» muestra lo que costó esa historia. Hace falta la acción «Ver el consumo del modelo».',
   },
   {
+    id: 'segundo-plano',
+    pregunta: '¿Puedo salir mientras trabajan los agentes?',
+    texto:
+      'Sí. Los agentes trabajan en segundo plano: la pantalla muestra en vivo qué agente trabaja, qué consulta y si reintenta, pero puede salir con «Ir a mis historias». En Historias de usuario → En proceso la verá como «Los agentes están trabajando ahora», y cuando terminen le llegará «Lista para continuar» en Notificaciones.',
+  },
+  {
     id: 'fallo',
     pregunta: '¿Qué pasa si falla un agente?',
     texto: 'El avance nunca se pierde. Así se maneja:',

@@ -103,6 +103,27 @@ Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 - **Calidad:** pruebas de backend, frontend y extremo a extremo en la integración continua, más las pruebas de estructura. Mantenimiento › Pruebas automatizadas ejecuta las de Playwright (web, tablet y móvil) en GitHub Actions a pedido, con evidencias en GitHub.
 - **Portabilidad:** `docker-compose.yml` levanta la misma imagen de Render en cualquier computadora, y las pruebas en su propia imagen de Playwright.
 
+## Agentes en segundo plano
+
+La solicitud HTTP ya no espera minutos a los agentes. Con el encabezado `Prefer: respond-async` (RFC 7240), crear,
+responder y reintentar un flujo responden **202 al instante** y los agentes trabajan aparte
+(`core/segundo_plano.py`):
+
+- **Cola**: como máximo `FLUJOS_SIMULTANEOS` flujos a la vez (2 por defecto); los demás esperan y ven su puesto.
+- **Avance**: los agentes emiten eventos sin saber quién escucha (`core/avance.py`): qué agente empieza, qué fuentes
+  consulta, si reintenta y cuándo termina. Solo nombres y cantidades, nunca lo que genera el modelo.
+- **Seguir el avance**: `GET /api/workflows/{id}/avance` en JSON, o en vivo por SSE con `Accept: text/event-stream`
+  (con latido cada 15 s para los proxies). Quien se conecta tarde recibe lo anterior. El navegador lo lee con
+  `fetch` (para enviar la sesión) y, si la conexión se corta, consulta cada 2 s.
+- **Al terminar**: el evento `fin` dice qué espera el flujo o el error ya traducido; `GET /api/workflows/{id}` da el
+  resultado. Si nadie estaba mirando, a quien creó la historia le llega «Lista para continuar» en Notificaciones.
+- **Sin el encabezado** todo responde como antes (la solicitud espera): las integraciones y pruebas existentes no
+  cambian. La lista «En proceso» muestra los flujos que trabajan ahora y se actualiza sola.
+
+Límite conocido: la cola y los eventos viven en la memoria del proceso (una instancia en Render). Para varias
+instancias pasarían a un servicio compartido (cola en la base o Redis) junto con el estado de LangGraph; la API
+no cambiaría.
+
 ## Resiliencia: saber cuándo dejar de insistir
 
 - **Presupuesto de tokens por agente** (`core/presupuesto_evidencia.py`, `PRESUPUESTO_EVIDENCIA_TOKENS`, 12 000 por

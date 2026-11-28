@@ -8,6 +8,7 @@ import { borrarBorrador } from '../../utils/borradorAsistente';
 import { etiquetaRevision, numeroRevision } from '../../utils/revisiones';
 import { RotateCcw, X } from 'lucide-react';
 import { useCrearHistoria } from './crear/useCrearHistoria';
+import { AvanceAgentesComponent } from './crear/AvanceAgentesComponent';
 import { AsistenteHistoriaContext } from './crear/AsistenteHistoriaContext';
 import { LISTA_PASO, pasoPorId } from './crear/pasosAsistente';
 import { PASO } from './crear/constantesAsistente';
@@ -40,6 +41,7 @@ const CrearHistoriaUsuarioContenido = () => {
     setFormError,
     startFreshWorkflow,
     workflowBusy,
+    avanceFlujo,
     workflowError,
     workflowErrorStatus,
     workflowResponse,
@@ -141,13 +143,17 @@ const CrearHistoriaUsuarioContenido = () => {
                       ? 'El Agente Analista analiza el requerimiento y el Asesor Técnico revisa qué otras funciones afecta el cambio...'
                       : 'El Agente Analista está analizando el requerimiento...'}
             </p>
-            <p className="ai-loader__subtext">
-              {isGeneratingStory
-                ? 'Borrador del modo manual (sin el flujo de agentes).'
-                : workflowResponse
-                  ? 'Puede tardar varios minutos. Si sale de la página, el avance anterior queda guardado.'
-                  : 'Consulta glosario, HU similares, estándares y checklist. Puede tardar unos minutos.'}
-            </p>
+            {workflowBusy && avanceFlujo.length > 0 ? (
+              <AvanceAgentesComponent eventos={avanceFlujo} onSalir={() => navigate('/historias')} />
+            ) : (
+              <p className="ai-loader__subtext">
+                {isGeneratingStory
+                  ? 'Borrador del modo manual (sin el flujo de agentes).'
+                  : workflowResponse
+                    ? 'Puede tardar varios minutos. Si sale de la página, el avance anterior queda guardado.'
+                    : 'Consulta glosario, HU similares, estándares y checklist. Puede tardar unos minutos.'}
+              </p>
+            )}
             {agent.isProcessing && (
               <BotonComponent variant="secondary" icon={X} onClick={agent.cancelTurn}>
                 Cancelar

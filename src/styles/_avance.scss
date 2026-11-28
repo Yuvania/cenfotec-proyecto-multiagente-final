@@ -1,0 +1,74 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+// Avance en vivo de los agentes en segundo plano (dentro de la pantalla de espera del asistente).
+// Solo variables del tema: el estado se dice con ícono y texto, no solo con color.
+.avance-agentes {
+  width: 100%;
+  max-width: 560px;
+  margin: 1rem auto 0;
+  text-align: left;
+
+  &__cola {
+    font-size: 0.875rem;
+    color: $color-text-secondary;
+    background-color: $color-primary-light;
+    border: 1px solid $color-primary-border;
+    border-radius: $radius-md;
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__lista { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  &__fila {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    background-color: $color-surface;
+
+    > svg { flex: none; margin-top: 0.15rem; color: $color-text-muted; }
+
+    &--trabajando { border-color: $color-primary-border; > svg { color: $color-primary-text; } }
+    &--listo > svg { color: $color-success-text; }
+    &--fallo { border-color: $color-danger-border; > svg { color: $color-danger-text; } }
+  }
+
+  &__texto { flex: 1; min-width: 0; }
+
+  &__nombre {
+    @include flex-between;
+    gap: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $color-text-primary;
+  }
+
+  &__tiempo { font-weight: 400; font-size: 0.8rem; color: $color-text-muted; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  &__detalle { font-size: 0.8rem; color: $color-text-secondary; margin-top: 0.15rem; }
+  &__reintento { font-size: 0.8rem; color: $color-warning-text; margin-top: 0.25rem; }
+
+  &__pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+    font-size: 0.8rem;
+    color: $color-text-muted;
+
+    p { flex: 1 1 260px; }
+  }
+
+  &__girando { animation: avance-girar 1.2s linear infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__girando { animation: none; }
+  }
+}
+
+@keyframes avance-girar { to { transform: rotate(360deg); } }

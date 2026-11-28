@@ -147,7 +147,7 @@ export const MEMORIA_AGENTE = 'Aprenden de las HU aprobadas (Repositorio de HU) 
 // --- Arquitectura › Cómo funciona: dos recorridos explicados paso a paso -----------------------------
 // Cada paso: { quien, texto }. «quien» es la pieza que actúa en ese momento.
 export const FLUJO_CONSULTA = [
-  { quien: 'Aplicación', texto: 'Usted escribe el requerimiento y lo envía. La aplicación se lo pasa a la API.' },
+  { quien: 'Aplicación', texto: 'Usted escribe el requerimiento y lo envía. La API responde al instante y los agentes trabajan en segundo plano, en una cola de hasta 2 historias a la vez.' },
   { quien: 'LangGraph', texto: 'Decide qué agente actúa (primero el Analista) y le entrega el caso.' },
   {
     quien: 'Agente y su MCP',
@@ -165,7 +165,7 @@ export const FLUJO_CONSULTA = [
     quien: 'LangGraph',
     texto: 'Pasa el resultado de agente a agente (Analista → Asesor Técnico → Redactor-Revisor) y se detiene cuando le toca a una persona: Negocio responde y el Product Owner aprueba.',
   },
-  { quien: 'Aplicación', texto: 'El resultado regresa a la aplicación y se muestra en pantalla.' },
+  { quien: 'Aplicación', texto: 'Mientras tanto, la pantalla muestra en vivo qué agente trabaja, qué consulta y si reintenta. Al terminar aparece el resultado; si usted salió de la pantalla, le llega «Lista para continuar» en Notificaciones.' },
 ];
 
 export const NOTA_FLUJO_CONSULTA = [
@@ -215,6 +215,7 @@ export const OPCION_MENU = [
       'Devuelta: el Product Owner la devolvió con un motivo; quien la creó la retoma.',
       'Rechazada o Aprobada: avisos de cómo terminó una historia.',
       'Falló un agente: un agente no pudo terminar ni con los reintentos automáticos; dice cuál y por qué, y se retoma desde ahí.',
+      'Lista para continuar: los agentes terminaron mientras usted no estaba en la pantalla; dice qué sigue.',
       'Los que piden una decisión van primero; los demás se marcan como leídos.',
     ],
   },
@@ -412,6 +413,7 @@ export const PRODUCCION_ARQUITECTURA = [
   'Persistencia: cada pausa del flujo se guarda en la base de datos; se puede retomar otro día o después de un reinicio del servidor.',
   'Observabilidad: trazas por turno y por etapa, y registros estructurados que no guardan lo que genera el modelo ni datos personales.',
   'Costo medible: tokens y costo de cada llamada al modelo, por historia y por agente; se sabe cuánto cuesta crear o cambiar una historia.',
+  'Agentes en segundo plano: la API responde al instante, los flujos esperan en una cola (2 a la vez) y el avance se ve en vivo (SSE, con respaldo por consulta). Nadie tiene que quedarse mirando la pantalla.',
   'Resiliencia: presupuesto de tokens por agente, reintentos automáticos solo para fallos pasajeros, un tiempo máximo para dejar de insistir, aviso a quien creó la historia y fiabilidad por agente en Métricas.',
   'Secretos: ninguno en el código; las sesiones se firman con SESION_SECRETO propio, el token de GitHub avisa 14 días antes de vencer y las acciones de los workflows están fijadas por su commit.',
   'Seguridad: inicio de sesión por usuario y permisos por acción (cada rol tiene sus acciones y cada usuario sus roles), validados en el servidor; agentes sin permisos propios, herramientas de solo lectura por agente, entradas tratadas como no confiables y aprobación siempre humana.',

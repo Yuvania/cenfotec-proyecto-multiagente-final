@@ -27,6 +27,7 @@ from agentes.analista.core.models import ErrorCode, ErrorDetail
 from agentes.analista.core.opencode_client import OpenCodeSettings
 from agentes.analista.core.observability import Observability
 from agentes.analista.core.prompt_loader import PromptLoadError, load_prompt
+from agentes.analista.core.segundo_plano import SegundoPlanoService
 from agentes.analista.core.workflow_graph import WorkflowRuntime
 from agentes.analista.memory.repositorio import RepositorioHU
 from agentes.conocimiento.sincronizacion import SincronizadorConocimiento
@@ -89,6 +90,8 @@ async def lifespan(app: FastAPI):
         # Los flujos se guardan en la base de datos: se pueden retomar otro día o tras un reinicio.
         persistencia=app.state.repositorio,
     )
+    # Agentes en segundo plano: cola de flujos (FLUJOS_SIMULTANEOS) y su avance en vivo.
+    app.state.segundo_plano = SegundoPlanoService()
     app.state.workflow_operation_guard = asyncio.Lock()
     app.state.workflow_active_operations = set()
     app.state.store = ConversationStore(
@@ -101,6 +104,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await app.state.segundo_plano.cerrar()
         quitar_registrador(app.state.metricas.registrar)
         quitar_registrador_turno(app.state.metricas.registrar_turno)
         await app.state.store.stop_cleanup()

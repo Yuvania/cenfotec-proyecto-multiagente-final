@@ -14,10 +14,12 @@ export const CATEGORIA = Object.freeze({
   aprobada: { texto: 'Aprobada', clase: 'exito', accion: false },
   // Un agente no pudo terminar después de los reintentos automáticos: se retoma desde aquí.
   fallo: { texto: 'Falló un agente', clase: 'peligro', accion: false },
+  // Los agentes terminaron en segundo plano mientras la persona no miraba: dice qué sigue.
+  lista: { texto: 'Lista para continuar', clase: 'accion', accion: false },
 });
 
-// Los avisos que se retoman desde la notificación: la historia devuelta y la que se detuvo por un fallo.
-const CATEGORIA_RETOMAR = Object.freeze(['devuelta', 'fallo']);
+// Los avisos que se abren desde la notificación, con el texto de su botón.
+const BOTON_ABRIR = Object.freeze({ devuelta: 'Retomar', fallo: 'Retomar', lista: 'Continuar' });
 
 const FILTRO_TODAS = 'todas';
 const FILTRO_ACCION = 'accion';
@@ -52,7 +54,7 @@ export const unirNotificaciones = (porDecidir = [], avisos = []) => {
     avisoId: aviso.id,
     categoria: CATEGORIA[aviso.tipo] ? aviso.tipo : 'devuelta',
     titulo: aviso.titulo,
-    detalle: aviso.tipo === 'fallo' ? (aviso.detalle || 'Un agente no pudo terminar. El avance quedó guardado.')
+    detalle: aviso.tipo === 'fallo' || aviso.tipo === 'lista' ? (aviso.detalle || 'Un agente no pudo terminar. El avance quedó guardado.')
       : aviso.detalle ? `Motivo: ${aviso.detalle}` : (aviso.tipo === 'aprobada' ? `${aviso.autor || 'El Product Owner'} la aprobó.` : ''),
     autor: aviso.autor,
     fecha: aviso.creado_en,
@@ -132,8 +134,10 @@ export const NotificacionesComponent = () => {
                         {item.categoria === 'por_aprobar' ? 'Revisar y decidir' : 'Revisar'}
                       </BotonComponent>
                     )}
-                    {CATEGORIA_RETOMAR.includes(item.categoria) && item.workflowId && (
-                      <BotonComponent variant="secondary" size="sm" onClick={() => abrir(item.workflowId)}>Retomar</BotonComponent>
+                    {BOTON_ABRIR[item.categoria] && item.workflowId && (
+                      <BotonComponent variant={item.categoria === 'lista' ? 'primary' : 'secondary'} size="sm" onClick={() => abrir(item.workflowId)}>
+                        {BOTON_ABRIR[item.categoria]}
+                      </BotonComponent>
                     )}
                     {!item.requiereAccion && !item.leido && (
                       <BotonComponent variant="secondary" size="sm" onClick={() => marcarLeido(item.avisoId)}>Marcar como leído</BotonComponent>

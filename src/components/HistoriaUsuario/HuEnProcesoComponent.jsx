@@ -19,10 +19,13 @@ const ROTULO_ESPERA = {
 const ROTULO_ESTADO = {
   error: 'Se detuvo por un error: puede reintentarlo',
   en_ejecucion: 'Los agentes estaban trabajando',
+  trabajando: 'Los agentes están trabajando ahora',
   fallido: 'Se detuvo sin terminar',
 };
 
 const ESTADO_TERMINADO = new Set(['completado', 'cancelado']);
+// Mientras algún flujo tiene agentes trabajando, la lista se actualiza sola cada pocos segundos.
+export const CADA_ACTUALIZACION_MS = 5000;
 
 export const describirFlujo = (flujo) => (
   (flujo.espera && ROTULO_ESPERA[flujo.espera]) || ROTULO_ESTADO[flujo.estado] || 'En proceso'
@@ -41,6 +44,9 @@ export const HuEnProcesoComponent = () => {
   const [error, setError] = useState('');
   const confirmar = useConfirmacion();
 
+  const hayTrabajando = listaFlujo.some((flujo) => flujo.estado === 'trabajando');
+  const [vuelta, setVuelta] = useState(0);
+
   useEffect(() => {
     const controller = new AbortController();
     listWorkflows({ signal: controller.signal })
@@ -51,7 +57,13 @@ export const HuEnProcesoComponent = () => {
         console.warn('No se pudo cargar la lista de HU en proceso:', cause?.message ?? cause);
       });
     return () => controller.abort();
-  }, []);
+  }, [vuelta]);
+
+  useEffect(() => {
+    if (!hayTrabajando) return undefined;
+    const temporizador = window.setTimeout(() => setVuelta((valor) => valor + 1), CADA_ACTUALIZACION_MS);
+    return () => window.clearTimeout(temporizador);
+  }, [hayTrabajando, listaFlujo]);
 
   const descartar = async (flujo) => {
     const acepta = await confirmar({
@@ -96,9 +108,9 @@ export const HuEnProcesoComponent = () => {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <BotonComponent variant="primary" icon={PlayCircle} onClick={() => navigate(`/historias/nueva?flujo=${encodeURIComponent(flujo.workflow_id)}`)}>
-                Retomar
+                {flujo.estado === 'trabajando' ? 'Ver avance' : 'Retomar'}
               </BotonComponent>
-              {puede(ACCION.HISTORIA_DESCARTAR_EN_PROCESO) && (
+              {puede(ACCION.HISTORIA_DESCARTAR_EN_PROCESO) && flujo.estado !== 'trabajando' && (
                 <BotonComponent variant="secondary" icon={Trash2} onClick={() => descartar(flujo)}>
                   Descartar
                 </BotonComponent>

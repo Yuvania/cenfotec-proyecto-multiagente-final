@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, TypeVar
 
+from agentes.analista.core.avance import emitir
 from agentes.metricas.registro_consumo import TurnoAgente, registrar_turno
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,7 @@ async def con_reintento(agente: str, operacion: Callable[[], Awaitable[_T]]) -> 
     inicio = _reloj()
     limite = tiempo_maximo()
     intento = 0
+    emitir("agente_inicio", agente=agente)
     while True:
         try:
             resultado = await operacion()
@@ -114,6 +116,8 @@ async def con_reintento(agente: str, operacion: Callable[[], Awaitable[_T]]) -> 
                     duracion_ms=int((_reloj() - inicio) * 1000), codigo_error=codigo_de(exc),
                 ))
                 _marcar(exc, agente, intento + 1)
+                emitir("agente_fin", agente=agente, exitoso=False, intentos=intento + 1,
+                       duracion_ms=int((_reloj() - inicio) * 1000), codigo=codigo_de(exc))
                 if intento:
                     logger.warning("agente_fallo_tras_reintentos", extra={
                         "event": "agente_fallo_tras_reintentos", "agente": agente, "intentos": intento + 1,
@@ -125,9 +129,11 @@ async def con_reintento(agente: str, operacion: Callable[[], Awaitable[_T]]) -> 
                 "event": "agente_reintento", "agente": agente, "intento": intento, "error_code": codigo_de(exc),
                 "espera_ms": int(decision.espera * 1000), "motivo": decision.motivo,
             })
+            emitir("agente_reintento", agente=agente, intento=intento, de=len(ESPERA_SEGUNDO),
+                   espera_ms=int(decision.espera * 1000), motivo=decision.motivo, codigo=codigo_de(exc))
             await _dormir(decision.espera)
             continue
-        await registrar_turno(TurnoAgente(
-            agente=agente, exitoso=True, intentos=intento + 1, duracion_ms=int((_reloj() - inicio) * 1000),
-        ))
+        duracion = int((_reloj() - inicio) * 1000)
+        await registrar_turno(TurnoAgente(agente=agente, exitoso=True, intentos=intento + 1, duracion_ms=duracion))
+        emitir("agente_fin", agente=agente, exitoso=True, intentos=intento + 1, duracion_ms=duracion)
         return resultado

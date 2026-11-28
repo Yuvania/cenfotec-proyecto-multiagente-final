@@ -89,6 +89,20 @@ describe('Notificaciones', () => {
     expect(await screen.findByText('Asistente abierto')).toBeInTheDocument();
   });
 
+  it('«Lista para continuar» dice qué sigue y abre la historia', async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(pendientesApi.listar).mockResolvedValue({ por_decidir: [], total: 1, avisos: [{
+      id: 'a-10', tipo: 'lista', titulo: 'Alta ficticia', workflow_id: 'f-10', leido: false,
+      detalle: 'Las preguntas para Negocio están listas para responder.', creado_en: '2030-01-07T10:00:00Z',
+    }] });
+    abrir();
+    const fila = (await screen.findByText('Alta ficticia')).closest('li');
+    expect(within(fila).getByText('Lista para continuar')).toBeInTheDocument();
+    expect(within(fila).getByText('Las preguntas para Negocio están listas para responder.')).toBeInTheDocument();
+    await usuario.click(within(fila).getByRole('button', { name: 'Continuar' }));
+    expect(await screen.findByText('Asistente abierto')).toBeInTheDocument();
+  });
+
   it('«Marcar todo como leído» llama al backend una sola vez', async () => {
     const usuario = userEvent.setup();
     abrir();
