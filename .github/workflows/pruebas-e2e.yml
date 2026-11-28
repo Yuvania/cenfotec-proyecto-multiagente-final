@@ -42,6 +42,7 @@ on:
           - roles
           - pruebas
           - consumo
+          - observabilidad
       navegador:
         description: Navegador
         type: choice

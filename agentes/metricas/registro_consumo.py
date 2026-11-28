@@ -85,12 +85,48 @@ class TurnoAgente:
     creado_en: str = field(default_factory=lambda: datetime.now(UTC).isoformat(timespec="milliseconds"))
 
 
+@dataclass(frozen=True, slots=True)
+class LlamadaHerramienta:
+    """Una consulta de un agente a su servidor MCP: cuál herramienta, cómo terminó y cuánto tardó."""
+
+    agente: str
+    herramienta: str
+    estado: str  # ok | timeout | error | rechazada
+    duracion_ms: int
+    creado_en: str = field(default_factory=lambda: datetime.now(UTC).isoformat(timespec="milliseconds"))
+
+
+class PresupuestoAgotadoError(RuntimeError):
+    """Kill-switch financiero: la historia o el mes alcanzaron su tope de gasto. El flujo se congela y pasa
+    a una persona; no se reintenta solo."""
+
+    def __init__(self, alcance: str, limite_usd: float, gastado_usd: float) -> None:
+        self.alcance = alcance  # historia | mes
+        self.limite_usd = limite_usd
+        self.gastado_usd = gastado_usd
+        if alcance == ALCANCE_MES:
+            mensaje = (f"Se alcanzó el tope de gasto del mes (US${limite_usd:,.2f}). Los agentes se detienen hasta el "
+                       "próximo mes o hasta que quien administra la aplicación suba el tope.")
+        else:
+            mensaje = (f"Esta historia alcanzó su tope de gasto (US${limite_usd:,.2f}). El avance quedó guardado; "
+                       "termínela a mano o pida a quien administra la aplicación que revise el consumo.")
+        super().__init__(mensaje)
+
+
+ALCANCE_HISTORIA = "historia"
+ALCANCE_MES = "mes"
+
 Registrador = Callable[[UsoModelo, ContextoConsumo], Awaitable[None]]
 RegistradorTurno = Callable[[TurnoAgente, ContextoConsumo], Awaitable[None]]
+RegistradorHerramienta = Callable[[LlamadaHerramienta, ContextoConsumo], Awaitable[None]]
+# Revisa el presupuesto antes de cada llamada al modelo; lanza PresupuestoAgotadoError si se pasó.
+Guardian = Callable[[ContextoConsumo], Awaitable[None]]
 
 _contexto: ContextVar[ContextoConsumo] = ContextVar("contexto_consumo", default=ContextoConsumo())
 _lista_registrador: list[Registrador] = []
 _lista_registrador_turno: list[RegistradorTurno] = []
+_lista_registrador_herramienta: list[RegistradorHerramienta] = []
+_lista_guardian: list[Guardian] = []
 
 
 @contextmanager
@@ -149,6 +185,56 @@ async def registrar_turno(turno: TurnoAgente) -> None:
         except Exception as exc:
             logger.warning("turno_no_registrado", extra={
                 "event": "turno_no_registrado", "error": type(exc).__name__, "agente": turno.agente,
+            })
+
+
+def agregar_registrador_herramienta(registrador: RegistradorHerramienta) -> None:
+    if registrador not in _lista_registrador_herramienta:
+        _lista_registrador_herramienta.append(registrador)
+
+
+def quitar_registrador_herramienta(registrador: RegistradorHerramienta) -> None:
+    if registrador in _lista_registrador_herramienta:
+        _lista_registrador_herramienta.remove(registrador)
+
+
+async def registrar_herramienta(llamada: LlamadaHerramienta) -> None:
+    """Entrega una consulta MCP (para la latencia por herramienta). Nunca detiene al agente."""
+    contexto = _contexto.get()
+    for registrador in list(_lista_registrador_herramienta):
+        try:
+            await registrador(llamada, contexto)
+        except Exception as exc:
+            logger.warning("herramienta_no_registrada", extra={
+                "event": "herramienta_no_registrada", "error": type(exc).__name__, "agente": llamada.agente,
+            })
+
+
+def agregar_guardian(guardian: Guardian) -> None:
+    if guardian not in _lista_guardian:
+        _lista_guardian.append(guardian)
+
+
+def quitar_guardian(guardian: Guardian) -> None:
+    if guardian in _lista_guardian:
+        _lista_guardian.remove(guardian)
+
+
+async def verificar_presupuesto() -> None:
+    """Antes de cada llamada al modelo: si la historia o el mes pasaron su tope, lanza PresupuestoAgotadoError.
+
+    Si la revisión misma falla (por ejemplo, la base no responde), se registra y se deja pasar: el tope de
+    OpenCode Go sigue protegiendo el gasto real.
+    """
+    contexto = _contexto.get()
+    for guardian in list(_lista_guardian):
+        try:
+            await guardian(contexto)
+        except PresupuestoAgotadoError:
+            raise
+        except Exception as exc:
+            logger.warning("presupuesto_no_verificado", extra={
+                "event": "presupuesto_no_verificado", "error": type(exc).__name__,
             })
 
 

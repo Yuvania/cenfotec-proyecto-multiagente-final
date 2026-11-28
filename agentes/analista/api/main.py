@@ -33,8 +33,11 @@ from agentes.analista.memory.repositorio import RepositorioHU
 from agentes.conocimiento.sincronizacion import SincronizadorConocimiento
 from agentes.pruebas.pruebas_service import PruebasService
 from agentes.metricas.metricas_service import MetricasService
+from agentes.metricas.observabilidad_service import ObservabilidadService
+from agentes.metricas.presupuesto_service import PresupuestoService
 from agentes.metricas.registro_consumo import (
-    agregar_registrador, agregar_registrador_turno, quitar_registrador, quitar_registrador_turno,
+    agregar_guardian, agregar_registrador, agregar_registrador_herramienta, agregar_registrador_turno,
+    quitar_guardian, quitar_registrador, quitar_registrador_herramienta, quitar_registrador_turno,
 )
 from agentes.metricas.repositorio_consumo import RepositorioConsumo
 from agentes.pruebas.repositorio_pruebas import RepositorioPrueba
@@ -74,12 +77,19 @@ async def lifespan(app: FastAPI):
     # Pruebas automatizadas: corren en GitHub Actions; aquí solo se piden, se siguen y se guarda el resumen.
     app.state.pruebas = PruebasService(RepositorioPrueba(app.state.repositorio.motor))
     # Métricas: cada respuesta del modelo se guarda con sus tokens y su costo, asociada a su historia y agente.
+    repositorio_consumo = RepositorioConsumo(app.state.repositorio.motor)
     app.state.metricas = MetricasService(
-        RepositorioConsumo(app.state.repositorio.motor), observability=app.state.observability,
+        repositorio_consumo, observability=app.state.observability,
         consumo_prueba=app.state.pruebas.consumo_desde,
     )
     agregar_registrador(app.state.metricas.registrar)
     agregar_registrador_turno(app.state.metricas.registrar_turno)
+    agregar_registrador_herramienta(app.state.metricas.registrar_herramienta)
+    # Kill-switch financiero: tope de gasto por historia y por mes, revisado antes de cada llamada al modelo.
+    app.state.presupuesto = PresupuestoService(repositorio_consumo)
+    agregar_guardian(app.state.presupuesto)
+    # Observabilidad: latencia por paso, alertas y estado de cada traza (pantalla aparte del consumo).
+    app.state.observabilidad = ObservabilidadService(repositorio_consumo, app.state.presupuesto)
     # Repositorio del Asesor y carga del conocimiento en Pinecone, en segundo plano y sin pasos manuales.
     app.state.sincronizador = SincronizadorConocimiento(repositorio=app.state.repositorio)
     app.state.repositorio.al_cambiar_conocimiento = app.state.sincronizador.programar_repositorio
@@ -107,6 +117,8 @@ async def lifespan(app: FastAPI):
         await app.state.segundo_plano.cerrar()
         quitar_registrador(app.state.metricas.registrar)
         quitar_registrador_turno(app.state.metricas.registrar_turno)
+        quitar_registrador_herramienta(app.state.metricas.registrar_herramienta)
+        quitar_guardian(app.state.presupuesto)
         await app.state.store.stop_cleanup()
         await app.state.observability.shutdown()
 

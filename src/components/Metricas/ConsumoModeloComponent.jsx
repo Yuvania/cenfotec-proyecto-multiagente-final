@@ -8,7 +8,7 @@ import { duracion, fechaCorta } from '../../utils/formatoPruebas';
 import { NOMBRE_MODO, formatoCosto, formatoToken, formatoTokenCorto } from '../../utils/formatoMetricas';
 import { BarrasConsumoComponent, ColumnasDiaComponent } from './GraficoConsumoComponent';
 
-// Mantenimiento › Métricas › Consumo del modelo: cuánto cuesta cada historia, cada agente y cada día.
+// Mantenimiento › Consumo del modelo: cuánto cuesta cada historia, cada agente y cada día.
 // Los datos los registra el backend con cada respuesta de OpenCode (ver docs/metricas.md).
 const PERIODO_INICIAL = [
   { codigo: '7', nombre: 'Últimos 7 días' },

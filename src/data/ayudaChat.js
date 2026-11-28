@@ -122,7 +122,7 @@ export const PREGUNTAS_AYUDA = [
     id: 'consumo',
     pregunta: '¿Cuánto cuesta crear una historia?',
     texto:
-      'Cada respuesta del modelo guarda sus tokens y su costo, asociados a la historia y al agente. En Mantenimiento › Métricas › Consumo del modelo se ve el costo promedio por historia creada y por cambio, por agente y por día; en el detalle de una historia, la pestaña «Consumo del modelo» muestra lo que costó esa historia. Hace falta la acción «Ver el consumo del modelo».',
+      'Cada respuesta del modelo guarda sus tokens y su costo, asociados a la historia y al agente. En Mantenimiento › Consumo del modelo se ve el costo promedio por historia creada y por cambio, por agente y por día; en el detalle de una historia, la pestaña «Consumo del modelo» muestra lo que costó esa historia. Hace falta la acción «Ver el consumo del modelo».',
   },
   {
     id: 'segundo-plano',
@@ -139,7 +139,14 @@ export const PREGUNTAS_AYUDA = [
       'Si se agotó la cuota del modelo, la pantalla dice a qué hora vuelve.',
       'Si aun así no termina, a quien creó la historia le llega en Notificaciones «Falló un agente», con el motivo.',
       'Desde esa notificación, o desde Historias de usuario → En proceso, use Retomar para volver a intentarlo.',
+      'Si la historia alcanzó el tope de gasto, no se reintenta: termínela en modo manual o pida a quien administra que revise Mantenimiento › Observabilidad.',
     ],
+  },
+  {
+    id: 'observabilidad',
+    pregunta: '¿Cómo sé si los agentes funcionan bien?',
+    texto:
+      'En Mantenimiento › Observabilidad: arriba están las alertas (una historia que costó más del doble del promedio, un paso de más de 3 minutos, un agente que falla más del 10 %, la cuota agotada o un costo sin precio), luego el gasto del mes contra su tope, cuánto tarda cada agente y cada fuente, y cómo terminó cada historia. Hace falta la acción «Ver la observabilidad».',
   },
   {
     id: 'pendientes',

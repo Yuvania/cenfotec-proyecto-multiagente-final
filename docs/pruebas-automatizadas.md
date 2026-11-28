@@ -6,7 +6,7 @@ Se pueden correr de tres formas, siempre con las mismas pruebas de `e2e/`:
 
 | Dónde | Cómo | Para qué |
 |---|---|---|
-| Tablero de la aplicación | **Mantenimiento › Calidad › Pruebas automatizadas** → Ejecutar pruebas | El día a día: cualquiera con la acción «Ejecutar pruebas automatizadas» |
+| Tablero de la aplicación | **Mantenimiento › Pruebas automatizadas** → Ejecutar pruebas | El día a día: cualquiera con la acción «Ejecutar pruebas automatizadas» |
 | Cualquier computadora con Docker | `docker compose --profile pruebas run --rm pruebas` | Probar antes de subir un cambio, sin instalar Node ni navegadores |
 | Desarrollo con Vite | `npm run test:e2e` | Escribir pruebas nuevas |
 

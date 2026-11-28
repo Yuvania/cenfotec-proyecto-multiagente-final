@@ -55,6 +55,8 @@ def _status(code: ErrorCode) -> int:
         return 502
     if code == ErrorCode.TURN_TIMEOUT:
         return 504
+    if code == ErrorCode.PRESUPUESTO_AGOTADO:
+        return 429
     if code in {ErrorCode.OPENCODE_RATE_LIMITED, ErrorCode.MODEL_UNAVAILABLE}:
         return 503
     if code in {

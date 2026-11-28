@@ -50,6 +50,7 @@ LISTA_ACCION: tuple[Accion, ...] = (
     Accion("prueba.ver", "Acceder a Pruebas automatizadas", MODULO_PRUEBA),
     Accion("prueba.ejecutar", "Ejecutar pruebas automatizadas", MODULO_PRUEBA),
     Accion("metrica.ver", "Ver el consumo del modelo (tokens y costo)", MODULO_METRICA),
+    Accion("observabilidad.ver", "Ver la observabilidad (latencia, alertas y trazas)", MODULO_METRICA),
 )
 
 # Acceso por nombre en el código: ACCION.HISTORIA_APROBAR == "historia.aprobar".

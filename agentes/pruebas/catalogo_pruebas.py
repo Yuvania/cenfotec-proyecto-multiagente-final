@@ -57,13 +57,15 @@ LISTA_ALCANCE: tuple[Alcance, ...] = (
             "@crear-historia", "historias"),
     Alcance("cambios", "Cambios a historias aprobadas", "Gestor de Cambios y registro manual.", "@cambios", "historias"),
     Alcance("exportar", "Exportar Word y PDF", "Descarga de la historia aprobada.", "@exportar", "historias"),
-    Alcance("mantenimiento", "Todo Mantenimiento", "Seguridad (usuarios, roles y acciones), Calidad (pruebas) y Métricas (consumo).",
+    Alcance("mantenimiento", "Todo Mantenimiento", "Usuarios, roles y acciones, pruebas, consumo del modelo y observabilidad.",
             "@mantenimiento", "mantenimiento"),
     Alcance("usuarios", "Usuarios", "Usuarios y sus roles.", "@usuarios", "mantenimiento"),
     Alcance("roles", "Roles y acciones", "Roles y las acciones que permiten, con nombres legibles.", "@roles", "mantenimiento"),
     Alcance("pruebas", "Pruebas automatizadas", "El propio tablero de ejecuciones.", "@pruebas", "mantenimiento"),
     Alcance("consumo", "Consumo del modelo", "Tokens y costo por historia, por agente y por día; permiso de métricas.",
             "@consumo", "mantenimiento"),
+    Alcance("observabilidad", "Observabilidad", "Alertas, tope de gasto, latencia por paso y estado de cada traza; su permiso.",
+            "@observabilidad", "mantenimiento"),
 )
 
 AMBIENTE_PRUEBAS = "pruebas"

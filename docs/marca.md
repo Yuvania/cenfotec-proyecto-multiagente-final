@@ -92,7 +92,7 @@ La estructura está en `src/styles/_layout.scss` (`.barra-lateral`) y se adapta 
 
 | Tamaño | Navegación | Contenido |
 |---|---|---|
-| **Web** (más de 1024 px) | Barra lateral ciruela de 232 px con logotipo, menú con texto y, abajo, la persona y el cambio de tema. Los grupos (Mantenimiento) se despliegan con sus secciones en mayúsculas pequeñas (Seguridad, Calidad, Métricas); la opción activa lleva el punto naranja. | Hasta 1200 px de ancho, margen de 40 px. Dentro de un grupo, arriba del título va la ruta: «Mantenimiento › Calidad › Pruebas automatizadas». |
+| **Web** (más de 1024 px) | Barra lateral ciruela de 232 px con logotipo, menú con texto y, abajo, la persona y el cambio de tema. Los grupos (Mantenimiento) se despliegan con sus secciones en mayúsculas pequeñas (Seguridad, Calidad, Métricas); la opción activa lleva el punto naranja. | Hasta 1200 px de ancho, margen de 40 px. Dentro de un grupo, arriba del título va la ruta: «Mantenimiento › Pruebas automatizadas». |
 | **Tablet** (641–1024 px) | Barra de 72 px solo con íconos; cada enlace conserva su nombre accesible y su texto emergente. Un grupo abre un panel blanco al lado con sus secciones. | Margen de 24 px; las grillas pasan a dos columnas. |
 | **Móvil** (hasta 640 px) | Barra superior ciruela con el logotipo y la sesión; abajo, una barra fija con cuatro opciones: Inicio, Avisos, Historias y **Más**. «Más» abre una hoja con los grupos y Ayuda. | Una columna, margen de 16 px; los botones de ayuda flotan sobre la barra inferior. |
 

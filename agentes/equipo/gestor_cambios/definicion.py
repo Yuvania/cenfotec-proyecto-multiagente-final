@@ -22,4 +22,5 @@ DEFINICION = DefinicionAgente(
     },
     maximo_ronda=1,
     puede_consultar_asesor=True,
+    nivel_modelo="liviano",
 )

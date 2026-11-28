@@ -21,6 +21,7 @@ const SAFE_MESSAGES = Object.freeze({
   REQUEST_ID_CONFLICT: 'El identificador de envío ya se usó con otro contenido. Vuelve a enviarlo.',
   CONVERSATION_NOT_FOUND: 'La conversación ya no está disponible. Inicia un chat nuevo.',
   CAPACITY_EXCEEDED: 'El servicio alcanzó su capacidad temporal. Inténtalo de nuevo en unos minutos.',
+  PRESUPUESTO_AGOTADO: 'Se alcanzó el tope de gasto del modelo. Quien administra la aplicación puede revisarlo en Mantenimiento › Observabilidad.',
   INTERNAL_ERROR: 'No fue posible completar el análisis. Puedes volver a intentarlo.',
 });
 

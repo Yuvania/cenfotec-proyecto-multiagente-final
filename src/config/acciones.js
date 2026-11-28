@@ -21,4 +21,5 @@ export const ACCION = Object.freeze({
   PRUEBA_VER: 'prueba.ver',
   PRUEBA_EJECUTAR: 'prueba.ejecutar',
   METRICA_VER: 'metrica.ver',
+  OBSERVABILIDAD_VER: 'observabilidad.ver',
 });

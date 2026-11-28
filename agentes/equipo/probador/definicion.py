@@ -19,4 +19,5 @@ DEFINICION = DefinicionAgente(
     herramienta=set(),
     fuente={},
     maximo_ronda=4,
+    nivel_modelo="liviano",
 )

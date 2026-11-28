@@ -23,7 +23,9 @@ from agentes.analista.core.opencode_compat import (
     SUPPORTED_OPENCODE_VERSIONS,
     is_supported_opencode_version,
 )
-from agentes.metricas.registro_consumo import registrar_uso, uso_desde_mensaje
+from agentes.metricas.registro_consumo import (
+    PresupuestoAgotadoError, registrar_uso, uso_desde_mensaje, verificar_presupuesto,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -47,6 +49,8 @@ class OpenCodeSettings(BaseSettings):
     server_password: SecretStr = SecretStr("")
     opencode_provider_id: str = ""
     opencode_model_id: str = ""
+    # Model router: modelo liviano (más barato) para los agentes que lo declaran. Vacío = todos usan el principal.
+    opencode_modelo_liviano_id: str = ""
     request_timeout_seconds: float = 90.0
     turn_timeout_seconds: float = Field(default=90.0, gt=0, le=300)
     message_limit: int = 4000
@@ -71,6 +75,7 @@ class OpenCodeSettings(BaseSettings):
             server_password=SecretStr(_read_env_value("OPENCODE_SERVER_PASSWORD", "")),
             opencode_provider_id=_read_env_value("OPENCODE_PROVIDER_ID", "").strip(),
             opencode_model_id=_read_env_value("OPENCODE_MODEL_ID", "").strip(),
+            opencode_modelo_liviano_id=_read_env_value("OPENCODE_MODELO_LIVIANO_ID", "").strip(),
             request_timeout_seconds=float(_read_env_value("ANALISTA_REQUEST_TIMEOUT_SECONDS", "90")),
             turn_timeout_seconds=float(_read_env_value("ANALISTA_TURN_TIMEOUT_SECONDS", "90")),
             message_limit=int(_read_env_value("ANALISTA_MESSAGE_MAX_CHARS", "4000")),
@@ -102,6 +107,10 @@ def _read_env_value(name: str, default: str) -> str:
         pass
     return default
 
+
+# Model router: cada agente declara si le basta un modelo liviano o necesita el principal (definicion.py).
+NIVEL_LIVIANO = "liviano"
+NIVEL_PRINCIPAL = "principal"
 
 # Esperas (s) entre consultas mientras OpenCode termina de cargar los agentes del proyecto.
 AGENT_LOAD_RETRY_DELAYS: tuple[float, ...] = (0.25, 0.5, 1.0, 1.5, 2.0)
@@ -264,10 +273,20 @@ class OpenCodeClient:
             raise OpenCodeClientError("OPENCODE_INCOMPATIBLE", "El servidor no cargó la versión local del prompt.")
         return agent
 
-    async def select_model(self, agent: Mapping[str, Any] | None = None) -> dict[str, str]:
+    @property
+    def hay_modelo_liviano(self) -> bool:
+        """El model router está activo: hay un modelo liviano distinto del principal."""
+        liviano = self.settings.opencode_modelo_liviano_id.strip()
+        return bool(liviano) and liviano != self.settings.opencode_model_id.strip()
+
+    async def select_model(self, agent: Mapping[str, Any] | None = None, *, nivel: str = NIVEL_PRINCIPAL) -> dict[str, str]:
+        """Elige el modelo. ``nivel`` es la decisión del model router: ``liviano`` usa OPENCODE_MODELO_LIVIANO_ID
+        (si está configurado) y ``principal`` usa OPENCODE_MODEL_ID."""
         configured_provider_id = self.settings.opencode_provider_id.strip()
         provider_id = configured_provider_id or "opencode"
         configured_id = self.settings.opencode_model_id
+        if nivel == NIVEL_LIVIANO and self.hay_modelo_liviano:
+            configured_id = self.settings.opencode_modelo_liviano_id.strip()
         agent_model = (agent or {}).get("model")
 
         if not re.fullmatch(r"[A-Za-z0-9._-]{1,80}", provider_id):
@@ -349,6 +368,11 @@ class OpenCodeClient:
         return session
 
     async def submit_prompt(self, session_id: str, text: str) -> dict[str, Any]:
+        # Kill-switch financiero: antes de pedirle algo al modelo se revisa el tope de la historia y del mes.
+        try:
+            await verificar_presupuesto()
+        except PresupuestoAgotadoError as exc:
+            raise OpenCodeClientError("PRESUPUESTO_AGOTADO", str(exc)) from exc
         result = await self._request("POST", f"/api/session/{quote(session_id, safe='')}/prompt", json={"text": text})
         envelope = result.get("data") if isinstance(result, dict) else None
         if not isinstance(envelope, dict):

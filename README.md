@@ -29,7 +29,7 @@ Proyecto desarrollado para el curso de Inteligencia Artificial de Cenfotec. El d
 - **Roles, acciones y Mantenimiento:** inicio de sesión por usuario; cada rol tiene sus acciones (por ejemplo, solo el Product Owner aprueba) y se administran en la pestaña Mantenimiento.
 - **Notificaciones:** una sola lista con la categoría de cada notificación (Por aprobar, Cambio por decidir, Devuelta, Rechazada, Aprobada) y filtros. El Product Owner ve lo que espera su aprobación; quien creó la historia ve si fue aprobada, devuelta con su motivo o rechazada. El aviso por Teams está preparado pero apagado hasta configurarlo (ver DESPLIEGUE.md).
 - **Menú con propósito:** Inicio, Notificaciones, Historias de usuario (con «Nueva historia» en el listado), Mantenimiento (*Seguridad*: Usuarios, Roles y acciones; *Calidad*: Pruebas automatizadas) y Ayuda. En móvil: Inicio, Avisos, Historias y «Más».
-- **Pruebas automatizadas:** en Mantenimiento › Calidad, para ejecutar las pruebas de Playwright (web, tablet y móvil) en GitHub Actions y ver sus resultados, con evidencias en GitHub.
+- **Pruebas automatizadas:** en Mantenimiento › Pruebas automatizadas, para ejecutar las pruebas de Playwright (web, tablet y móvil) en GitHub Actions y ver sus resultados, con evidencias en GitHub.
 - **Ayuda integrada** con el flujo, la arquitectura (qué hace cada opción del menú, cómo viaja una consulta entre los agentes, cómo corren las pruebas, los agentes y las tecnologías) y los temas pendientes de definición.
 
 ## Flujo de creación de una historia
@@ -85,7 +85,7 @@ Todos los agentes siguen el ciclo **percibir → pensar → actuar** (`agentes/a
 - **Control humano:** ningún agente aprueba historias. Negocio responde, la persona que redacta la HU toma las decisiones de impacto y el Product Owner aprueba.
 - **MCP propio y MCP de terceros:** los agentes del flujo usan servidores MCP propios (FastMCP) sobre la base de conocimiento; el Agente de Pruebas usa Playwright MCP, el servidor oficial de Microsoft, y el backend solo le permite 10 de sus herramientas y solo la dirección de la aplicación de prueba.
 - **Trazabilidad:** la sección *Cómo trabajó el agente* muestra qué decidió consultar cada agente y por qué; Langfuse registra cada paso.
-- **Métricas de consumo:** cada respuesta del modelo guarda sus tokens y su costo (los entrega OpenCode), asociados a su historia y a su agente. Mantenimiento › Métricas › Consumo del modelo muestra el costo promedio por historia creada y por cambio, por agente y por día; el detalle de cada HU muestra lo que costó. Ver [docs/metricas.md](docs/metricas.md).
+- **Métricas de consumo:** cada respuesta del modelo guarda sus tokens y su costo (los entrega OpenCode), asociados a su historia y a su agente. Mantenimiento › Consumo del modelo muestra el costo promedio por historia creada y por cambio, por agente y por día; el detalle de cada HU muestra lo que costó. Ver [docs/metricas.md](docs/metricas.md).
 
 ### Persistencia de los flujos
 

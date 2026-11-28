@@ -512,6 +512,12 @@
     border: 1px solid $color-warning-border;
     color: $color-warning-text;
   }
+
+  &--danger {
+    background-color: $color-danger-light;
+    border: 1px solid $color-danger-border;
+    color: $color-danger-text;
+  }
 }
 
 // Empty State

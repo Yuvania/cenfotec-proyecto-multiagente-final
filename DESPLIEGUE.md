@@ -44,10 +44,13 @@ Se cambian en el panel de Render (**Environment**); al guardar, Render reinicia 
 | `OPENCODE_SERVER_PASSWORD` | Sí | Clave interna entre el backend y OpenCode (la genera Render). |
 | `OPENCODE_API_KEY` | Sí | Credencial del modelo. |
 | `OPENCODE_PROVIDER_ID`, `OPENCODE_MODEL_ID` | Sí | Modelo a usar (`opencode-go` / `glm-5.3-flash`). |
+| `OPENCODE_MODELO_LIVIANO_ID` | No | Model router: modelo liviano del plan Go para el Asesor Técnico, el Gestor de Cambios y el Agente de Pruebas. Si falla, el turno se repite con `OPENCODE_MODEL_ID`. Vacío: todos usan el principal. |
+| `PRESUPUESTO_HISTORIA_USD` | No | Tope de gasto por creación o cambio de una HU (0,50 por defecto; `0` lo desactiva). Al llegar, el flujo se detiene y pasa a una persona. |
+| `PRESUPUESTO_MENSUAL_USD` | No | Tope de gasto del mes calendario (60 por defecto, el uso mensual de OpenCode Go; `0` lo desactiva). |
 | `DATABASE_URL` | Sí en Render | Cadena de conexión de la base MySQL compatible (TiDB Cloud Starter). Sin ella se usa un SQLite local que **se pierde** en cada despliegue. |
 | `DATABASE_SSL` | No | Con `0` desactiva TLS hacia la base (solo para una base local); por defecto está activo. |
 | `ANALISTA_REPO_DB` | No | Ruta del SQLite local cuando no hay `DATABASE_URL` (desarrollo). |
-| `LANGFUSE_*` | No | Observabilidad. |
+| `LANGFUSE_*` | No | Trazas en Langfuse: cada historia es una sesión con su costo. La pantalla Mantenimiento › Observabilidad funciona sin Langfuse. |
 | `VITE_ANIO`, `VITE_VERSION` | No | Año y versión del pie de página: «HISTORIAS DE USUARIO ® Derechos Reservados *año* - V.*versión*». Son de **compilación**: al cambiarlos Render vuelve a construir la imagen. Por defecto: año actual y `1.0.0`. |
 | `VITE_PREFIJO_HU` | No | Prefijo del número de la HU. Es de **compilación**: si lo cambias, hay que volver a desplegar. |
 | `PINECONE_API_KEY` | No | Clave de Pinecone para el RAG. Sin ella (o si Pinecone falla) las herramientas usan la copia local y lo indican con `status=degraded`. Los demás `PINECONE_*` vienen en `render.yaml`. |
@@ -128,3 +131,15 @@ Para usarlo en serio: en `render.yaml` cambie `plan: free` por `plan: starter`, 
 - El plan Free actual asigna 512 MB por instancia ([planes de cómputo de Render](https://render.com/docs/compute-plans)); OpenCode y FastAPI comparten esa memoria. Esta revisión local no puede consultar las métricas del servicio Render: monitoréalas en el panel de Render durante cualquier prueba. Si hay reinicios por memoria, detén la prueba y evalúa el plan existente antes de volver a intentarlo. No añadas workers ni servicios.
 
 Para las pruebas de PowerShell y los límites de validación actuales, consulta [la guía de arranque y pruebas](docs/GUIA-PRUEBAS-ARRANQUE-POWERSHELL.md).
+
+## Que el modelo no cueste más que la suscripción
+
+El plan OpenCode Go cuesta un monto fijo al mes e incluye un uso de US$12 cada 5 horas, US$30 por semana y US$60
+por mes (en dólares equivalentes). Cuando se agota, **Go bloquea las solicitudes**, salvo que esté encendida la opción
+«Use balance», que sigue cobrando del saldo de Zen. Para no pagar nada extra:
+
+1. En la consola de OpenCode, deje **apagado «Use balance»** y **no cargue créditos en Zen**.
+2. Deshabilite los modelos de Zen que son de pago y use solo el proveedor `opencode-go`.
+3. La aplicación agrega una segunda barrera: `PRESUPUESTO_MENSUAL_USD` y `PRESUPUESTO_HISTORIA_USD` detienen a los
+   agentes antes de llegar al límite y lo muestran en Mantenimiento › Observabilidad.
+

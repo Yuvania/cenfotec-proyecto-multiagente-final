@@ -20,14 +20,21 @@ import { NotificacionesComponent } from '../components/Notificaciones/Notificaci
 import { PruebasComponent } from '../components/Pruebas/PruebasComponent';
 import { ResultadoPruebaComponent } from '../components/Pruebas/ResultadoPruebaComponent';
 import { ConsumoModeloComponent } from '../components/Metricas/ConsumoModeloComponent';
+import { ObservabilidadComponent } from '../components/Metricas/ObservabilidadComponent';
 
-// Grupos del menú: una opción que se abre y muestra sus opciones por sección.
+// REGLA DEL MENÚ: máximo 2 niveles de profundidad (grupo › opción), por ejemplo «Mantenimiento › Observabilidad».
+// No se agregan grupos dentro de grupos, submenús ni opciones que abran otro menú. Las secciones de un grupo
+// son solo títulos para ordenar su panel: no son un nivel, no se abren ni aparecen en las migas.
+// Una pantalla nueva va suelta (nivel 1) o dentro de un grupo existente (nivel 2). Ver docs/arquitectura.md.
+export const PROFUNDIDAD_MAXIMA_MENU = 2;
+
+// Grupos del menú: una opción que se abre y muestra sus opciones, ordenadas bajo títulos de sección.
 // En web se despliega en la barra lateral, en tablet se abre un panel y en móvil va dentro de «Más».
 export const listaGrupoMenu = Object.freeze([
   {
     id: 'mantenimiento',
     etiqueta: 'Mantenimiento',
-    titulo: 'Usuarios, roles, pruebas y consumo del modelo',
+    titulo: 'Usuarios, roles, pruebas, consumo del modelo y observabilidad',
     icono: Settings,
     orden: 80,
     listaSeccion: [
@@ -51,8 +58,8 @@ const redirigir = (destino) => function Redireccion() {
 // emergente), ícono, orden, si la ruta debe coincidir exacta, contador (el número que se muestra al lado),
 // barraMovil (si va en la barra inferior del móvil; las demás van en «Más») y, si pertenece a un grupo,
 // grupo y seccion (de listaGrupoMenu).
-// Las pantallas internas de un grupo (por ejemplo, los resultados de una ejecución) toman la ruta
-// «Mantenimiento › Calidad › …» de la opción del menú cuya dirección las contiene.
+// Las pantallas internas de un grupo (por ejemplo, los resultados de una ejecución) toman las migas
+// «Mantenimiento › Pruebas automatizadas» de la opción del menú cuya dirección las contiene.
 export const listaRuta = Object.freeze([
   {
     ruta: '',
@@ -109,6 +116,12 @@ export const listaRuta = Object.freeze([
     accion: ACCION.METRICA_VER,
     menu: { etiqueta: 'Consumo del modelo', corta: 'Consumo', titulo: 'Tokens y costo por historia, por agente y por día', orden: 84, grupo: 'mantenimiento', seccion: 'metricas' },
   },
+  {
+    ruta: 'mantenimiento/observabilidad',
+    componente: ObservabilidadComponent,
+    accion: ACCION.OBSERVABILIDAD_VER,
+    menu: { etiqueta: 'Observabilidad', corta: 'Observab.', titulo: 'Alertas, latencia por paso y estado de cada historia', orden: 85, grupo: 'mantenimiento', seccion: 'metricas' },
+  },
   { ruta: 'mantenimiento', componente: redirigir('/mantenimiento/usuarios') },
   { ruta: 'pruebas', componente: redirigir('/mantenimiento/pruebas') },
   { ruta: 'pruebas/:id', componente: redirigir('/mantenimiento/pruebas/:id') },
@@ -143,7 +156,8 @@ export const listaOpcionMenu = (puede = () => true) => {
   return [...listaSuelta, ...listaGrupo].sort((a, b) => a.orden - b.orden);
 };
 
-/** «Mantenimiento › Calidad › Pruebas automatizadas» para la dirección actual, o null si no está en un grupo. */
+/** «Mantenimiento › Pruebas automatizadas» para la dirección actual, o null si no está en un grupo.
+ * Solo dos niveles: el grupo y la opción (la sección es un título del panel, no un nivel). */
 export const rutaDeMigas = (direccion) => {
   const listaOpcionGrupo = listaRuta.filter((entrada) => entrada.menu?.grupo);
   const opcion = listaOpcionGrupo
@@ -151,10 +165,8 @@ export const rutaDeMigas = (direccion) => {
     .sort((a, b) => b.ruta.length - a.ruta.length)[0];
   if (!opcion) return null;
   const grupo = listaGrupoMenu.find((item) => item.id === opcion.menu.grupo);
-  const seccion = grupo?.listaSeccion.find((item) => item.id === opcion.menu.seccion);
   return {
     grupo: grupo?.etiqueta,
-    seccion: seccion?.titulo,
     opcion: { etiqueta: opcion.menu.etiqueta, destino: `/${opcion.ruta}` },
     esPrincipal: direccion === `/${opcion.ruta}`,
   };

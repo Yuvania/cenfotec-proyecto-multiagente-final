@@ -45,6 +45,9 @@ class DefinicionAgente:
     fuente: Mapping[str, frozenset[str]]
     maximo_ronda: int = 1  # rondas de consulta MCP por solicitud
     puede_consultar_asesor: bool = False
+    # Model router: «liviano» si la tarea es acotada (clasificar, resumir, diagnosticar) y basta un modelo más
+    # barato; «principal» si redacta o analiza a fondo. Si el liviano falla, el turno se repite con el principal.
+    nivel_modelo: Literal["liviano", "principal"] = "principal"
     # «modulo:funcion» que agrega herramientas propias del agente a su servidor MCP (opcional).
     herramienta_extra: str | None = None
     carpeta: Path = field(default=CARPETA_EQUIPO)

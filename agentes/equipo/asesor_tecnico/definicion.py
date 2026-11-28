@@ -26,4 +26,5 @@ DEFINICION = DefinicionAgente(
     maximo_ronda=3,
     # Herramientas propias del Asesor (código de solo lectura), además de las de conocimiento.
     herramienta_extra="agentes.analista.mcp.technical_tools:registrar_herramienta_codigo",
+    nivel_modelo="liviano",
 )

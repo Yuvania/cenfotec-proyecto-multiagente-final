@@ -7,6 +7,9 @@ description: Úsala cuando haya que agregar una pantalla, una ruta o una opción
 
 Las rutas y el menú salen de un solo registro: `src/config/rutas.jsx`. No agregues `<Route>` en `App.jsx` ni enlaces en `EnvolturaPaginaComponent.jsx`.
 
+## Regla que no se negocia: el menú tiene como máximo 2 niveles
+Grupo › opción, por ejemplo «Mantenimiento › Observabilidad». **Nunca un tercer nivel**: no crees grupos dentro de grupos, submenús, opciones que abran otro menú ni migas de tres partes. Las secciones de un grupo (*Seguridad*, *Calidad*, *Métricas*) son solo títulos que ordenan su panel: no son un nivel, no se abren y no aparecen en las migas. Si una pantalla nueva no cabe, va suelta (nivel 1) o dentro de un grupo existente (nivel 2). La prueba «el menú no pasa de 2 niveles» de `src/config/__tests__/rutas.test.jsx` lo comprueba: no la relajes ni la borres. Ver `docs/arquitectura.md`.
+
 ## Pasos
 1. Crea el componente en `src/components/<Funcionalidad>/<Nombre>Component.jsx`.
    - Lógica sin React en `src/utils/` (con pruebas), llamadas al backend en `src/services/`, estado reutilizable en `src/hooks/`.
@@ -17,7 +20,7 @@ Las rutas y el menú salen de un solo registro: `src/config/rutas.jsx`. No agreg
      menu: { etiqueta: 'Reportes', titulo: 'Ver reportes', icono: BarChart3, orden: 40 } },
    ```
    - Sin `menu` la pantalla existe pero no aparece en el menú (por ejemplo, un detalle `historias/:id`).
-   - **Grupos:** lo que es de administrar no va suelto en el menú. Va en un grupo de `listaGrupoMenu` (hoy, Mantenimiento con las secciones *Seguridad* y *Calidad*): la entrada lleva `menu.grupo` y `menu.seccion`, su ruta empieza por la del grupo (`mantenimiento/...`) y no lleva ícono. La ruta «Mantenimiento › Calidad › …» se arma sola.
+   - **Grupos:** lo que es de administrar no va suelto en el menú. Va en un grupo de `listaGrupoMenu` (hoy, Mantenimiento, con los títulos de sección *Seguridad*, *Calidad* y *Métricas*): la entrada lleva `menu.grupo` y `menu.seccion` (el título bajo el que aparece), su ruta empieza por la del grupo (`mantenimiento/...`) y no lleva ícono. Las migas «Mantenimiento › Opción» se arman solas, con dos partes.
    - **Móvil:** solo las opciones con `barraMovil: true` van en la barra inferior (hoy Inicio, Notificaciones e Historias); las demás y los grupos van en «Más». No agregues más de cuatro a la barra.
    - **Direcciones viejas:** si cambias una ruta, deja la vieja con `redirigir('/nueva')` para no romper enlaces guardados.
    - Las acciones de una pantalla (por ejemplo, «Nueva historia») van como botón en la pantalla, no como opción del menú.

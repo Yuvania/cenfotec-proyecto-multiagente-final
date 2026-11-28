@@ -159,3 +159,15 @@ def test_las_acciones_de_github_estan_fijadas_por_commit():
                 continue
             assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", uso), (
                 f"{archivo.name}: «{uso}» no está fijada por commit. Use `{uso.split('@')[0]}@<sha de 40> # versión`.")
+
+
+def test_la_regla_del_menu_de_dos_niveles_esta_documentada_y_probada():
+    """Ninguna persona ni IA debe agregarle un tercer nivel al menú (docs/arquitectura.md)."""
+    arquitectura = (RAIZ / "docs" / "arquitectura.md").read_text(encoding="utf-8")
+    assert "### Regla del menú: máximo 2 niveles" in arquitectura
+    rutas = (RAIZ / "src" / "config" / "rutas.jsx").read_text(encoding="utf-8")
+    assert "export const PROFUNDIDAD_MAXIMA_MENU = 2;" in rutas
+    prueba = (RAIZ / "src" / "config" / "__tests__" / "rutas.test.jsx").read_text(encoding="utf-8")
+    assert "el menú no pasa de 2 niveles: grupo › opción" in prueba
+    skill = (RAIZ / ".claude" / "skills" / "agregar-ruta" / "SKILL.md").read_text(encoding="utf-8")
+    assert "máximo 2 niveles" in skill

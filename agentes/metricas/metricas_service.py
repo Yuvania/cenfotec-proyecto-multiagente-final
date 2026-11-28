@@ -11,8 +11,11 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from langfuse import propagate_attributes
+
 from agentes.metricas.registro_consumo import (
-    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, TurnoAgente, UsoModelo,
+    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, LlamadaHerramienta, TurnoAgente,
+    UsoModelo,
 )
 from agentes.metricas.repositorio_consumo import RepositorioConsumo, desde_dias
 
@@ -58,28 +61,43 @@ class MetricasService:
     async def registrar_turno(self, turno: TurnoAgente, contexto: ContextoConsumo) -> None:
         await asyncio.to_thread(self.repositorio.guardar_turno, turno, contexto)
 
+    async def registrar_herramienta(self, llamada: LlamadaHerramienta, contexto: ContextoConsumo) -> None:
+        await asyncio.to_thread(self.repositorio.guardar_herramienta, llamada, contexto)
+
     def _enviar_a_langfuse(self, uso: UsoModelo, contexto: ContextoConsumo) -> None:
+        """Una generación por respuesta del modelo. Todas las de un flujo van a la misma traza (su id sale del id
+        del flujo) y todas las de una HU (creación y cambios) a la misma sesión: en Langfuse › Sessions se ve el
+        costo de cada historia completa."""
         cliente = getattr(self.observability, "client", None)
         if cliente is None:
             return
         try:
-            generacion = cliente.start_observation(
-                as_type="generation",
-                name=f"modelo-{uso.agente}",
-                model=uso.modelo or None,
-                usage_details={
-                    "input": uso.tokens_entrada, "output": uso.tokens_salida, "reasoning": uso.tokens_razonamiento,
-                    "cache_read": uso.tokens_cache_lectura, "cache_write": uso.tokens_cache_escritura,
-                },
-                cost_details={"total": uso.costo_usd},
-                metadata={
-                    "agente": uso.agente, "modo": contexto.modo, "workflow_id": contexto.workflow_id,
-                    "historia_id": contexto.historia_id, "costo_origen": uso.costo_origen,
-                    "duracion_ms": uso.duracion_ms,
-                },
-                level="DEFAULT" if uso.exitosa else "ERROR",
+            contexto_traza = (
+                {"trace_id": cliente.create_trace_id(seed=contexto.workflow_id)} if contexto.workflow_id else None
             )
-            generacion.end()
+            with propagate_attributes(
+                session_id=(contexto.historia_id or contexto.workflow_id or None),
+                trace_name=f"historia-{contexto.modo}",
+                tags=[contexto.modo],
+            ):
+                generacion = cliente.start_observation(
+                    trace_context=contexto_traza,
+                    as_type="generation",
+                    name=f"modelo-{uso.agente}",
+                    model=uso.modelo or None,
+                    usage_details={
+                        "input": uso.tokens_entrada, "output": uso.tokens_salida, "reasoning": uso.tokens_razonamiento,
+                        "cache_read": uso.tokens_cache_lectura, "cache_write": uso.tokens_cache_escritura,
+                    },
+                    cost_details={"total": uso.costo_usd},
+                    metadata={
+                        "agente": uso.agente, "modo": contexto.modo, "workflow_id": contexto.workflow_id,
+                        "historia_id": contexto.historia_id, "costo_origen": uso.costo_origen,
+                        "duracion_ms": uso.duracion_ms,
+                    },
+                    level="DEFAULT" if uso.exitosa else "ERROR",
+                )
+                generacion.end()
         except Exception as exc:
             logger.warning("langfuse_consumo_fallido", extra={"event": "langfuse_consumo_fallido", "error": type(exc).__name__})
 

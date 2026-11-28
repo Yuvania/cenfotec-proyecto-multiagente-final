@@ -430,6 +430,9 @@ def _translate_runtime_error(exc: Exception) -> WorkflowApiError:
             retryable=True,
             retry_at=exc.retry_at,
         )
+    if isinstance(exc, (OpenCodeClientError, OrchestrationError)) and str(getattr(exc.code, "value", exc.code)) == ErrorCode.PRESUPUESTO_AGOTADO.value:
+        # Kill-switch financiero: no se reintenta; una persona decide (modo manual o subir el tope).
+        return WorkflowApiError(ErrorCode.PRESUPUESTO_AGOTADO, str(exc), status_code=429, retryable=False)
     if isinstance(exc, OpenCodeClientError):
         if exc.code == ErrorCode.TURN_TIMEOUT.value:
             return _translate_runtime_error(TimeoutError())

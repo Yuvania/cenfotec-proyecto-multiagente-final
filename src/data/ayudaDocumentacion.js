@@ -174,7 +174,7 @@ export const NOTA_FLUJO_CONSULTA = [
   'Langfuse registra cada paso, para saber qué hizo cada agente y dónde se detuvo.',
   'Cada agente recibe como máximo 12 000 tokens de evidencia: se quitan los resultados repetidos, quedan los más relevantes y lo recortado se marca para que el agente sepa que hay más.',
   'Si un agente falla por algo pasajero (tardó demasiado o el proveedor no respondió), se reintenta solo hasta 3 veces, esperando 2, 4 y 8 segundos. Si se agotó la cuota, solo se espera si vuelve en un minuto o menos; si no, la pantalla dice a qué hora vuelve. Lo que no se arregla solo (una clave inválida) no se reintenta, y a quien creó la historia le llega el aviso «Falló un agente».',
-  'Cada respuesta de OpenCode trae sus tokens y su costo: se guardan asociados a la historia y al agente. Así se sabe cuánto cuesta crear o cambiar una historia (Mantenimiento › Métricas › Consumo del modelo).',
+  'Cada respuesta de OpenCode trae sus tokens y su costo: se guardan asociados a la historia y al agente. Así se sabe cuánto cuesta crear o cambiar una historia (Mantenimiento › Consumo del modelo).',
 ];
 
 export const FLUJO_PRUEBAS = [
@@ -231,12 +231,13 @@ export const OPCION_MENU = [
   },
   {
     titulo: 'Mantenimiento',
-    texto: 'Lo que administra el sistema, en tres secciones:',
+    texto: 'Lo que administra el sistema. El menú tiene como máximo dos niveles: Mantenimiento › la opción.',
     puntos: [
-      'Seguridad › Usuarios: a cada persona se le asignan sus roles.',
-      'Seguridad › Roles y acciones: a cada rol se le marcan sus acciones, por ejemplo Aprobar historia.',
-      'Calidad › Pruebas automatizadas: ejecutar las pruebas y ver los resultados con el diagnóstico del Agente de Pruebas.',
-      'Métricas › Consumo del modelo: cuántos tokens y cuánto dinero gasta cada historia, cada agente y cada día.',
+      'Usuarios: a cada persona se le asignan sus roles.',
+      'Roles y acciones: a cada rol se le marcan sus acciones, por ejemplo Aprobar historia.',
+      'Pruebas automatizadas: ejecutar las pruebas y ver los resultados con el diagnóstico del Agente de Pruebas.',
+      'Consumo del modelo: cuántos tokens y cuánto dinero gasta cada historia, cada agente y cada día.',
+      'Observabilidad: alertas, cuánto tarda cada paso y cómo terminó cada historia, y el tope de gasto del mes.',
     ],
   },
   {
@@ -252,12 +253,15 @@ export const TECNOLOGIAS = [
   { titulo: 'Backend', texto: 'Python 3.12, FastAPI con Uvicorn, Pydantic y httpx. Valida los datos y cada ruta declara qué acción necesita la persona.' },
   { titulo: 'Orquestación de agentes', texto: 'LangGraph: el flujo es una tabla de pasos (workflow_graph.py), con pausas para las decisiones de las personas y puntos de control que se guardan en la base de datos para retomarlo otro día.' },
   { titulo: 'Modelo de lenguaje', texto: 'OpenCode Server 2.1.2 como interfaz con el modelo, sin permisos para usar herramientas propias. Proveedor OpenCode Go con el modelo glm-5.3-flash (configurables). LangChain para las plantillas de los prompts y la validación de las salidas.' },
+  { titulo: 'Model router', texto: 'Cada agente declara si le basta un modelo liviano (Asesor Técnico, Gestor de Cambios, Agente de Pruebas) o necesita el principal (Analista, Redactor-Revisor). Con OPENCODE_MODELO_LIVIANO_ID configurado, los primeros usan el liviano y, si falla, el turno se repite con el principal.' },
   { titulo: 'Herramientas (MCP)', texto: 'FastMCP: un servidor MCP por agente, con herramientas de solo lectura, conectado con el adaptador MCP de LangChain. El Agente de Pruebas usa además Playwright MCP, limitado a la aplicación de prueba.' },
   { titulo: 'Conocimiento (RAG)', texto: 'Pinecone, índice historias-usuario, con el modelo de embeddings multilingual-e5-large (1024 dimensiones) en 6 espacios: glosario, estándares, checklist, HU aprobadas, lecciones y código. Se carga solo al arrancar y al aprobar una HU; si Pinecone no responde, se usa una copia local.' },
   { titulo: 'Repositorio de código', texto: 'Un repositorio de GitHub de solo lectura (de ejemplo, codigo-ejemplo-polizas) que el Asesor Técnico revisa. Se copia al arrancar el servicio.' },
   { titulo: 'Datos', texto: 'TiDB Cloud (compatible con MySQL) con SQLAlchemy y PyMySQL: historias, Repositorio de HU, cambios, lecciones, flujos en proceso, usuarios, roles y avisos. En local y en pruebas, SQLite.' },
   { titulo: 'Trazabilidad', texto: 'Langfuse para seguir cada paso de los agentes, y registros del servidor que indican la causa cuando un flujo se detiene, sin guardar lo que generó el modelo.' },
-  { titulo: 'Métricas de consumo', texto: 'Los tokens y el costo de cada respuesta del modelo, tal como los entrega OpenCode, en la tabla consumo_modelo y en Langfuse. Se ven por historia, por agente y por día en Mantenimiento › Métricas › Consumo del modelo, y en el detalle de cada HU.' },
+  { titulo: 'Observabilidad', texto: 'Latencia por paso (cada agente y cada fuente MCP), alertas con umbrales y el estado de cada traza, en Mantenimiento › Observabilidad. En Langfuse, cada historia es una sesión con su costo.' },
+  { titulo: 'Tope de gasto', texto: 'Kill-switch financiero: antes de cada llamada al modelo se revisa lo gastado por la historia (PRESUPUESTO_HISTORIA_USD) y por el mes (PRESUPUESTO_MENSUAL_USD). Al llegar al tope, el flujo se detiene, queda guardado y pasa a una persona.' },
+  { titulo: 'Métricas de consumo', texto: 'Los tokens y el costo de cada respuesta del modelo, tal como los entrega OpenCode, en la tabla consumo_modelo y en Langfuse. Se ven por historia, por agente y por día en Mantenimiento › Consumo del modelo, y en el detalle de cada HU.' },
   { titulo: 'Pruebas', texto: 'Vitest y Testing Library en la interfaz; pytest y pytest-asyncio en el backend; Playwright de punta a punta en web, tablet y móvil. GitHub Actions las ejecuta en cada cambio y, a pedido, desde Mantenimiento › Pruebas automatizadas.' },
   { titulo: 'Despliegue', texto: 'Docker en una sola imagen (interfaz compilada, backend y OpenCode), publicada en Render con despliegue automático desde la rama main. Con docker compose la misma imagen corre en cualquier computadora.' },
 ];
@@ -297,7 +301,7 @@ export const RESUMEN_ARQUITECTURA = [
   'Antes de cambiar algo: docs/arquitectura.md, docs/marca.md y las skills de .agents/skills. Las pruebas de estructura fallan si se rompe la estructura o el diseño.',
 ];
 
-// --- Pruebas automatizadas (Mantenimiento › Calidad › Pruebas automatizadas) ----------------------
+// --- Pruebas automatizadas (Mantenimiento › Pruebas automatizadas) ----------------------
 export const PRUEBAS_AUTOMATIZADAS = [
   {
     titulo: 'Qué son',
@@ -375,7 +379,7 @@ export const TIPOGRAFIA_DISENO = [
 ];
 
 export const DISPOSITIVO_DISENO = [
-  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px. Mantenimiento se despliega con sus secciones (Seguridad, Calidad y Métricas) y la pantalla muestra su ruta: Mantenimiento › Calidad › Pruebas automatizadas.' },
+  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px. Mantenimiento se despliega con sus opciones, ordenadas bajo títulos (Seguridad, Calidad y Métricas), y la pantalla muestra su ruta: Mantenimiento › Pruebas automatizadas. El menú nunca pasa de dos niveles.' },
   { titulo: 'Tablet', texto: 'La barra queda en íconos de 72 px, con nombre accesible y texto emergente. Mantenimiento abre un panel al lado con sus opciones.' },
   { titulo: 'Móvil', texto: 'Barra superior con la marca y la sesión; abajo, Inicio, Avisos, Historias y «Más», que abre una hoja con Mantenimiento y Ayuda. Una columna y botones de 44 px.' },
   { titulo: 'Modo claro y oscuro', texto: 'Lo elige la persona; cada color tiene su par oscuro con contraste AA.' },
@@ -411,10 +415,12 @@ export const CAMBIO_ARQUITECTURA = [
 export const PRODUCCION_ARQUITECTURA = [
   'Diseño: paleta de colores y tipografía documentadas, con comportamiento definido en web, tablet y móvil, en modo claro y oscuro. Las pruebas impiden que un cambio funcional las altere.',
   'Persistencia: cada pausa del flujo se guarda en la base de datos; se puede retomar otro día o después de un reinicio del servidor.',
-  'Observabilidad: trazas por turno y por etapa, y registros estructurados que no guardan lo que genera el modelo ni datos personales.',
+  'Observabilidad: pantalla propia con alertas (costo alto, pasos lentos, fallos, cuota, costo no exacto), latencia por agente y por fuente MCP y el estado de cada traza; trazas en Langfuse agrupadas por historia; registros estructurados que no guardan lo que genera el modelo ni datos personales.',
+  'Tope de gasto (kill-switch financiero): por historia y por mes; al alcanzarlo el flujo se detiene y una persona decide (modo manual o subir el tope). Es supervisión humana por excepción.',
+  'Model router: los agentes con tareas acotadas usan un modelo liviano y escalan al principal si falla.',
   'Costo medible: tokens y costo de cada llamada al modelo, por historia y por agente; se sabe cuánto cuesta crear o cambiar una historia.',
   'Agentes en segundo plano: la API responde al instante, los flujos esperan en una cola (2 a la vez) y el avance se ve en vivo (SSE, con respaldo por consulta). Nadie tiene que quedarse mirando la pantalla.',
-  'Resiliencia: presupuesto de tokens por agente, reintentos automáticos solo para fallos pasajeros, un tiempo máximo para dejar de insistir, aviso a quien creó la historia y fiabilidad por agente en Métricas.',
+  'Resiliencia: presupuesto de tokens por agente, reintentos automáticos solo para fallos pasajeros, un tiempo máximo para dejar de insistir, aviso a quien creó la historia y fiabilidad por agente en Consumo del modelo.',
   'Secretos: ninguno en el código; las sesiones se firman con SESION_SECRETO propio, el token de GitHub avisa 14 días antes de vencer y las acciones de los workflows están fijadas por su commit.',
   'Seguridad: inicio de sesión por usuario y permisos por acción (cada rol tiene sus acciones y cada usuario sus roles), validados en el servidor; agentes sin permisos propios, herramientas de solo lectura por agente, entradas tratadas como no confiables y aprobación siempre humana.',
   'Configuración por entorno y despliegue en contenedor: las claves y direcciones no están en el código.',

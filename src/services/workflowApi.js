@@ -16,9 +16,11 @@ export class WorkflowApiError extends Error {
   constructor(status, payload = {}, { path = '', method = 'GET' } = {}) {
     const detail = payload?.error ?? {};
     const cuotaAgotada = detail.code === 'OPENCODE_RATE_LIMITED';
+    // Kill-switch financiero: el backend ya explica qué tope se alcanzó y qué hacer.
+    const topeGasto = detail.code === 'PRESUPUESTO_AGOTADO' && typeof detail.message === 'string';
     const safeMessage = status === 404 && method === 'POST' && path === ''
       ? 'El endpoint de workflows no está disponible en este backend. Puede continuar con el flujo manual.'
-      : (cuotaAgotada ? quotaRecoveryWorkflowMessage(detail.retry_at) : STATUS_MESSAGES[status]);
+      : (cuotaAgotada ? quotaRecoveryWorkflowMessage(detail.retry_at) : (topeGasto ? detail.message : STATUS_MESSAGES[status]));
     super(safeMessage ?? (typeof detail.message === 'string'
       ? detail.message
       : 'No fue posible completar la solicitud del flujo.'));

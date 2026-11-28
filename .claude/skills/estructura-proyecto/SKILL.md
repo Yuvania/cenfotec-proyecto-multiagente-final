@@ -17,6 +17,8 @@ Lee `docs/arquitectura.md` antes de cambiar código y `docs/marca.md` (skill `ma
 7. **La HU no muestra detalle técnico** a la persona usuaria (archivos, código, nombres internos).
 8. **Toda funcionalidad se protege con una acción.** El catálogo está en `agentes/seguridad/catalogo.py` (código, nombre legible y módulo) y su copia de códigos en `src/config/acciones.js`. Cada ruta de la API declara `requiere_accion(ACCION.X)`, `requiere_sesion` o `ruta_publica` (`agentes/analista/api/sesion.py`); en el frontend, la entrada de `rutas.jsx` lleva `accion` y los botones usan `useSesion().puede(ACCION.X)` o `<Permitido accion>`. La acción nueva aparece sola en Mantenimiento para asignarla a los roles. El permiso se valida en el backend; ocultar el botón no basta.
 9. **El diseño es la marca «Ciruela corporativa».** Una tarea funcional no cambia colores, fuentes ni la estructura de navegación: usa las variables de `src/styles/_theme.scss` y los componentes comunes (skill `marca-diseno`).
+10. **El menú tiene como máximo 2 niveles** (grupo › opción, por ejemplo «Mantenimiento › Observabilidad»). Nunca un tercer nivel: ni grupos dentro de grupos ni submenús. Ver `docs/arquitectura.md` y la skill `agregar-ruta`.
+11. **Cada agente declara su `nivel_modelo`** (`liviano` o `principal`) para el model router. Toda llamada al modelo pasa por `OpenCodeClient`, que revisa el tope de gasto antes de enviarla: no llames al modelo por otro camino.
 10. **Pruebas de punta a punta por suite.** Cada `test` o `test.describe` de primer nivel en `e2e/` lleva la etiqueta de su suite y simula la API (`e2e/soporte/ambiente.js`); solo datos sintéticos. Ver `docs/pruebas-automatizadas.md`.
 
 ## Convenciones de código

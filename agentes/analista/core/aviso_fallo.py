@@ -32,6 +32,7 @@ MOTIVO_POR_CODIGO = {
     "CONTRACT_INVALID": "su respuesta no tuvo el formato esperado",
     "MCP_UNAVAILABLE": "no pudo consultar sus fuentes de conocimiento",
     "DEPENDENCY_UNAVAILABLE": "no pudo consultar un servicio que necesita",
+    "PRESUPUESTO_AGOTADO": "se alcanzó el tope de gasto del modelo; el flujo quedó detenido para que una persona decida",
 }
 _NOMBRE_ERROR = {
     "WriterOutputError": "AGENT_OUTPUT_INVALID",
@@ -81,7 +82,11 @@ def detalle_fallo(exc: BaseException, *, agente: str | None, ahora: datetime | N
     vuelve = getattr(exc, "retry_at", None)
     if codigo == "OPENCODE_RATE_LIMITED" and isinstance(vuelve, datetime) and vuelve > (ahora or datetime.now(UTC)):
         partes.append(f"La cuota vuelve a las {_hora(vuelve)}.")
-    partes.append("El avance quedó guardado: use Retomar para volver a intentarlo.")
+    if codigo == "PRESUPUESTO_AGOTADO":
+        partes.append("El avance quedó guardado: puede terminar la historia en modo manual o pedir a quien "
+                      "administra la aplicación que revise el consumo en Mantenimiento › Observabilidad.")
+    else:
+        partes.append("El avance quedó guardado: use Retomar para volver a intentarlo.")
     return " ".join(partes)
 
 

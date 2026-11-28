@@ -44,6 +44,11 @@ vi.mock('../services/metricasApi.js', () => ({
       por_flujo: [], prueba: null, aviso_costo: null,
     })),
     leerConsumoHistoria: vi.fn(async (historiaId) => ({ historia_id: historiaId, total: TOTAL_VACIO, por_agente: [], por_flujo: [] })),
+    leerObservabilidad: vi.fn(async (periodo) => ({
+      periodo, lista_periodo: [{ codigo: '7', nombre: 'Últimos 7 días' }, { codigo: '30', nombre: 'Últimos 30 días' }, { codigo: 'todo', nombre: 'Todo' }],
+      umbral: {}, presupuesto: { mensual_usd: 60, historia_usd: 0.5, gastado_mes_usd: 0, porcentaje_mes: 0 },
+      alerta: [], latencia_agente: [], latencia_herramienta: [], traza: [],
+    })),
   },
 }));
 

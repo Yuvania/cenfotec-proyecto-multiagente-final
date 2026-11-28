@@ -36,3 +36,12 @@ export const diaCorto = (dia) => {
   const fecha = new Date(`${dia}T12:00:00Z`);
   return Number.isNaN(fecha.getTime()) ? dia : fecha.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 };
+
+// Latencia: «450 ms», «1,9 s» o, desde un minuto, «03:10».
+export const formatoLatencia = (milisegundos) => {
+  const valor = Math.max(0, Number(milisegundos) || 0);
+  if (valor < 1000) return `${Math.round(valor)} ms`;
+  if (valor < 60_000) return `${new Intl.NumberFormat('es-CR', { maximumFractionDigits: 1 }).format(valor / 1000)} s`;
+  const total = Math.round(valor / 1000);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};

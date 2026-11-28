@@ -8,6 +8,10 @@ El ciclo es el mismo para todos y se escribe una sola vez aquí:
 4. armar el mensaje final, enviarlo y esperar la respuesta;
 5. interpretar la salida y, si no cumple el contrato, pedir una corrección en la misma sesión (una vez).
 
+Model router: si el agente declara ``nivel_modelo="liviano"`` y está configurado ``OPENCODE_MODELO_LIVIANO_ID``,
+el turno corre con el modelo liviano; si falla (salida inválida, modelo no disponible, cuota de ese modelo), se
+repite una vez con el principal. El tope de gasto, la clave inválida y el tiempo agotado no se escalan.
+
 Cada agente solo aporta lo que es suyo: la tarea, el contexto, cómo armar el mensaje con la evidencia y cómo
 interpretar (y validar) la salida. Ver ``RedactorRevisorService`` como ejemplo.
 """
@@ -22,11 +26,15 @@ from typing import Any, ClassVar, Generic, TypeVar
 from agentes.analista.core.agent_registry import AgentId, get_agent_spec
 from agentes.analista.core.ciclo_agente import ConsultorAsesor, ResultadoCiclo, ejecutar_ciclo, pedir_reparacion
 from agentes.analista.core.ejecutor_mcp import SesionMCP
-from agentes.analista.core.opencode_client import OpenCodeClient, OpenCodeClientError
+from agentes.analista.core.opencode_client import NIVEL_LIVIANO, NIVEL_PRINCIPAL, OpenCodeClient, OpenCodeClientError
 from agentes.analista.core.opencode_compat import is_supported_opencode_version
 from agentes.analista.core.prompt_loader import PromptLoadError
+from agentes.equipo import obtener_definicion
 
 logger = logging.getLogger(__name__)
+
+# Errores que no se arreglan cambiando de modelo: no se escalan al principal.
+CODIGO_SIN_ESCALAR = frozenset({"PRESUPUESTO_AGOTADO", "OPENCODE_AUTH_FAILED", "TURN_TIMEOUT"})
 
 _Salida = TypeVar("_Salida")
 
@@ -76,8 +84,32 @@ class AgenteOpenCodeService(Generic[_Salida]):
         except (PromptLoadError, ValueError, TypeError) as exc:
             raise self.error_preparacion("No se pudo cargar el prompt del agente.") from exc
 
-    async def _ejecutar_turno(
+    def _nivel_modelo(self) -> str:
+        try:
+            return obtener_definicion(self.agente.value).nivel_modelo
+        except KeyError:
+            logger.info("agente_sin_definicion", extra={"event": "agente_sin_definicion", "agent": self.agente.value})
+            return NIVEL_PRINCIPAL
+
+    async def _ejecutar_turno(self, **datos: Any) -> _Salida:
+        """Model router: intenta con el modelo liviano si al agente le basta; si falla, escala al principal."""
+        nivel = self._nivel_modelo()
+        if nivel != NIVEL_LIVIANO:
+            return await self._turno_con_modelo(NIVEL_PRINCIPAL, **datos)
+        try:
+            return await self._turno_con_modelo(NIVEL_LIVIANO, **datos)
+        except (OpenCodeClientError, SalidaAgenteInvalidaError) as exc:
+            codigo = getattr(exc, "code", "SALIDA_INVALIDA")
+            if codigo in CODIGO_SIN_ESCALAR or getattr(exc, "sin_liviano", False):
+                raise
+            logger.warning("router_escala_principal", extra={
+                "event": "router_escala_principal", "agent": self.agente.value, "error": str(codigo),
+            })
+            return await self._turno_con_modelo(NIVEL_PRINCIPAL, **datos)
+
+    async def _turno_con_modelo(
         self,
+        nivel: str,
         *,
         tarea: str,
         contexto: str,
@@ -89,38 +121,48 @@ class AgenteOpenCodeService(Generic[_Salida]):
         consulta_propia: ConsultaPropia | None = None,
     ) -> _Salida:
         prompt = self.prompt
-        async with self._client_factory(prompt=prompt, agent_id=self.agente) as client:
-            deadline = asyncio.get_running_loop().time() + client.settings.turn_timeout_seconds
-            client.set_deadline(deadline)
-            server = await client.server_info()
-            if not is_supported_opencode_version(server.get("version")):
-                raise OpenCodeClientError("OPENCODE_INCOMPATIBLE", "La versión de OpenCode no es compatible.")
-            agent = await client.verify_agent(self.agente)
-            model = await client.select_model(agent)
-            async with client.session(title=self.titulo_sesion, model=model) as session:
-                base = Turno(client=client, session_id=session["id"], deadline=deadline, ciclo=None)
-                if consulta_propia is not None:
-                    ciclo = await consulta_propia(base)
-                else:
-                    # Pensar y actuar: el agente decide qué consultar en su servidor MCP (RAG detrás).
-                    ciclo = await ejecutar_ciclo(
-                        agent_id=self.agente, client=client, session_id=session["id"], deadline=deadline,
-                        tarea=tarea, contexto=contexto, consulta_base=consulta_base, maximo_ronda=maximo_ronda,
-                        consultor_asesor=consultor_asesor, sesion_mcp_factory=self._sesion_mcp_factory,
+        efectivo = nivel
+        try:
+            async with self._client_factory(prompt=prompt, agent_id=self.agente) as client:
+                deadline = asyncio.get_running_loop().time() + client.settings.turn_timeout_seconds
+                client.set_deadline(deadline)
+                server = await client.server_info()
+                if not is_supported_opencode_version(server.get("version")):
+                    raise OpenCodeClientError("OPENCODE_INCOMPATIBLE", "La versión de OpenCode no es compatible.")
+                agent = await client.verify_agent(self.agente)
+                if efectivo == NIVEL_LIVIANO and not getattr(client, "hay_modelo_liviano", False):
+                    # Sin modelo liviano configurado, el router no actúa: es el turno normal con el principal.
+                    efectivo = NIVEL_PRINCIPAL
+                model = (await client.select_model(agent, nivel=NIVEL_LIVIANO) if efectivo == NIVEL_LIVIANO
+                         else await client.select_model(agent))
+                async with client.session(title=self.titulo_sesion, model=model) as session:
+                    base = Turno(client=client, session_id=session["id"], deadline=deadline, ciclo=None)
+                    if consulta_propia is not None:
+                        ciclo = await consulta_propia(base)
+                    else:
+                        # Pensar y actuar: el agente decide qué consultar en su servidor MCP (RAG detrás).
+                        ciclo = await ejecutar_ciclo(
+                            agent_id=self.agente, client=client, session_id=session["id"], deadline=deadline,
+                            tarea=tarea, contexto=contexto, consulta_base=consulta_base, maximo_ronda=maximo_ronda,
+                            consultor_asesor=consultor_asesor, sesion_mcp_factory=self._sesion_mcp_factory,
+                        )
+                    turno = Turno(client=client, session_id=session["id"], deadline=deadline, ciclo=ciclo)
+                    admision = await client.submit_prompt(session["id"], armar_mensaje(turno))
+                    generado = await client.wait_for_assistant(
+                        session["id"], deadline=deadline, after=admision.get("time", {}).get("created"),
                     )
-                turno = Turno(client=client, session_id=session["id"], deadline=deadline, ciclo=ciclo)
-                admision = await client.submit_prompt(session["id"], armar_mensaje(turno))
-                generado = await client.wait_for_assistant(
-                    session["id"], deadline=deadline, after=admision.get("time", {}).get("created"),
-                )
-                try:
-                    return interpretar(generado, turno)
-                except SalidaAgenteInvalidaError as exc:
-                    if not self.corregir_salida:
-                        raise
-                    # No se registra el contenido del modelo, solo el motivo que escribe el backend.
-                    logger.warning("%s: salida inválida (%s); se pide una corrección.", self.agente.value, exc)
-                    corregido = await pedir_reparacion(client, session["id"], str(exc), deadline)
-                    if corregido is None:
-                        raise
-        return interpretar(corregido, turno)
+                    try:
+                        return interpretar(generado, turno)
+                    except SalidaAgenteInvalidaError as exc:
+                        if not self.corregir_salida:
+                            raise
+                        # No se registra el contenido del modelo, solo el motivo que escribe el backend.
+                        logger.warning("%s: salida inválida (%s); se pide una corrección.", self.agente.value, exc)
+                        corregido = await pedir_reparacion(client, session["id"], str(exc), deadline)
+                        if corregido is None:
+                            raise
+            return interpretar(corregido, turno)
+        except (OpenCodeClientError, SalidaAgenteInvalidaError) as exc:
+            if efectivo == NIVEL_PRINCIPAL:
+                exc.sin_liviano = True  # ya corrió con el principal: el router no tiene a dónde escalar
+            raise

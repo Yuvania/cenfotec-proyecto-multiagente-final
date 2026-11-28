@@ -12,7 +12,7 @@ Regla (saber cuándo dejar de insistir):
   (240 por defecto), para que la persona no espere indefinidamente.
 
 Cada turno queda registrado (agente, si respondió, intentos, duración y código del error) para la fiabilidad por
-agente en Mantenimiento › Métricas.
+agente en Mantenimiento › Consumo del modelo y Mantenimiento › Observabilidad.
 """
 from __future__ import annotations
 

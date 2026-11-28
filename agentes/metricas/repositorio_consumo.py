@@ -14,7 +14,8 @@ from sqlalchemy import Boolean, Column, Float, Index, Integer, MetaData, String,
 from sqlalchemy.exc import IntegrityError
 
 from agentes.metricas.registro_consumo import (
-    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, TurnoAgente, UsoModelo,
+    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, LlamadaHerramienta, TurnoAgente,
+    UsoModelo,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,22 @@ turno_agente = Table(
     Index("ix_turno_agente_creado", "creado_en"),
 )
 
+# Una consulta de un agente a su servidor MCP (RAG): para la latencia por herramienta en Observabilidad.
+llamada_herramienta = Table(
+    "llamada_herramienta", _metadata,
+    Column("id", String(36), primary_key=True),
+    Column("workflow_id", String(36)),
+    Column("agente", String(40), nullable=False),
+    Column("herramienta", String(80), nullable=False),
+    Column("estado", String(20), nullable=False),
+    Column("duracion_ms", Integer, nullable=False),
+    Column("creado_en", String(40), nullable=False),
+    Index("ix_llamada_herramienta_creado", "creado_en"),
+)
+
 _C = consumo_modelo.c
 _T = turno_agente.c
+_H = llamada_herramienta.c
 _TOKENS_TOTAL = _C.tokens_entrada + _C.tokens_salida + _C.tokens_razonamiento + _C.tokens_cache_lectura + _C.tokens_cache_escritura
 
 
@@ -126,6 +141,62 @@ class RepositorioConsumo:
                 codigo_error=(turno.codigo_error or None) and turno.codigo_error[:40],
                 duracion_ms=max(0, turno.duracion_ms), creado_en=turno.creado_en,
             ))
+
+    def guardar_herramienta(self, llamada: LlamadaHerramienta, contexto: ContextoConsumo) -> None:
+        with self.motor.begin() as conexion:
+            conexion.execute(insert(llamada_herramienta).values(
+                id=str(uuid.uuid4()), workflow_id=contexto.workflow_id, agente=llamada.agente[:40],
+                herramienta=llamada.herramienta[:80], estado=llamada.estado[:20],
+                duracion_ms=max(0, llamada.duracion_ms), creado_en=llamada.creado_en,
+            ))
+
+    # --- Kill-switch financiero ---------------------------------------------------------------------
+    def costo(self, *, workflow_id: str | None = None, desde: str | None = None) -> float:
+        """Lo gastado por un flujo (una historia en creación o un cambio) o desde una fecha."""
+        consulta = select(func.coalesce(func.sum(_C.costo_usd), 0))
+        if workflow_id:
+            consulta = consulta.where(_C.workflow_id == workflow_id)
+        if desde:
+            consulta = consulta.where(_C.creado_en >= desde)
+        with self.motor.connect() as conexion:
+            return round(float(conexion.execute(consulta).scalar() or 0), 8)
+
+    # --- Observabilidad -----------------------------------------------------------------------------
+    def lista_turno(self, *, desde: str | None = None, limite: int = 5000) -> list[dict[str, Any]]:
+        """Turnos de los agentes (más recientes primero), para latencias, alertas y trazas."""
+        consulta = select(_T.workflow_id, _T.historia_id, _T.modo, _T.agente, _T.exitoso, _T.intentos,
+                          _T.codigo_error, _T.duracion_ms, _T.creado_en).order_by(_T.creado_en.desc()).limit(limite)
+        if desde:
+            consulta = consulta.where(_T.creado_en >= desde)
+        with self.motor.connect() as conexion:
+            return [dict(fila._mapping) for fila in conexion.execute(consulta)]
+
+    def lista_herramienta(self, *, desde: str | None = None, limite: int = 5000) -> list[dict[str, Any]]:
+        consulta = select(_H.workflow_id, _H.agente, _H.herramienta, _H.estado, _H.duracion_ms, _H.creado_en) \
+            .order_by(_H.creado_en.desc()).limit(limite)
+        if desde:
+            consulta = consulta.where(_H.creado_en >= desde)
+        with self.motor.connect() as conexion:
+            return [dict(fila._mapping) for fila in conexion.execute(consulta)]
+
+    def costo_por_flujo(self, *, desde: str | None = None) -> dict[str, dict[str, Any]]:
+        """Costo, título y cuántas llamadas no tienen costo exacto, por flujo."""
+        consulta = self._filtro(
+            select(
+                _C.workflow_id, func.max(_C.titulo).label("titulo"), func.max(_C.historia_id).label("historia_id"),
+                func.coalesce(func.sum(_C.costo_usd), 0).label("costo_usd"),
+                func.coalesce(func.sum(case((_C.costo_origen != "opencode", 1), else_=0)), 0).label("costo_inexacto"),
+            ).where(_C.workflow_id.is_not(None)),
+            desde,
+        ).group_by(_C.workflow_id)
+        with self.motor.connect() as conexion:
+            return {
+                fila.workflow_id: {
+                    "titulo": fila.titulo, "historia_id": fila.historia_id,
+                    "costo_usd": round(float(fila.costo_usd or 0), 8), "costo_inexacto": int(fila.costo_inexacto or 0),
+                }
+                for fila in conexion.execute(consulta)
+            }
 
     def fiabilidad_por_agente(self, *, desde: str | None = None) -> list[dict[str, Any]]:
         """Por agente: turnos, fallidos, con reintento, tasa de fallo y duración (promedio y máxima)."""

@@ -21,6 +21,15 @@ services:
         value: opencode-go
       - key: OPENCODE_MODEL_ID
         value: glm-5.3-flash
+      # Model router: modelo liviano del plan Go para el Asesor Técnico, el Gestor de Cambios y el Agente de
+      # Pruebas. Vacío = todos usan OPENCODE_MODEL_ID.
+      - key: OPENCODE_MODELO_LIVIANO_ID
+        value: ""
+      # Kill-switch financiero (dólares; 0 lo desactiva): tope por historia y por mes calendario.
+      - key: PRESUPUESTO_HISTORIA_USD
+        value: "0.50"
+      - key: PRESUPUESTO_MENSUAL_USD
+        value: "60"
       - key: OPENCODE_SERVER_PASSWORD
         generateValue: true
       - key: OPENCODE_API_KEY

@@ -1,7 +1,7 @@
 import { expect, test } from './soporte/prueba.js';
 import { USUARIO_ADMINISTRADOR, USUARIO_CONSULTA, ingresarComo } from './soporte/ambiente.js';
 
-// Mantenimiento › Métricas › Consumo del modelo, con la API simulada (no gasta cuota del modelo).
+// Mantenimiento › Consumo del modelo, con la API simulada (no gasta cuota del modelo).
 const PANEL = {
   periodo: '30',
   lista_periodo: [{ codigo: '7', nombre: 'Últimos 7 días' }, { codigo: '30', nombre: 'Últimos 30 días' }, { codigo: 'todo', nombre: 'Todo' }],
@@ -45,10 +45,10 @@ test.describe('Consumo del modelo', { tag: ['@mantenimiento', '@consumo'] }, () 
       return route.fulfill({ status: 200, json: { ...PANEL, periodo: periodos.at(-1) } });
     });
 
-    await test.step('Abre la pantalla desde Mantenimiento › Métricas', async () => {
+    await test.step('Abre la pantalla desde Mantenimiento', async () => {
       await page.goto('/mantenimiento/consumo', { waitUntil: 'domcontentloaded' });
       await expect(page.getByRole('heading', { level: 1, name: 'Consumo del modelo' })).toBeVisible();
-      await expect(page.getByRole('navigation', { name: 'Está en' })).toContainText('Métricas');
+      await expect(page.getByRole('navigation', { name: 'Está en' })).toHaveText(/Mantenimiento\s*›\s*Consumo del modelo/);
     });
 
     await test.step('Ve el costo total y el promedio por historia creada', async () => {
@@ -81,5 +81,52 @@ test.describe('Consumo del modelo', { tag: ['@mantenimiento', '@consumo'] }, () 
   test('sin la acción de métricas no aparece en el menú', async ({ page }) => {
     await ingresarComo(page, USUARIO_CONSULTA);
     await expect(page.getByRole('link', { name: 'Consumo del modelo' })).toHaveCount(0);
+  });
+});
+
+// Mantenimiento › Observabilidad: pantalla aparte del consumo (¿está funcionando bien ahora?).
+const OBSERVABILIDAD = {
+  periodo: '7',
+  lista_periodo: PANEL.lista_periodo,
+  umbral: { paso_ms: 180000 },
+  presupuesto: { mensual_usd: 60, historia_usd: 0.5, gastado_mes_usd: 12, porcentaje_mes: 20 },
+  alerta: [{ id: 'paso_lento', nivel: 'advertencia', titulo: '1 paso(s) tardaron más de 3 minutos', detalle: 'Agentes: Asesor Técnico.' }],
+  latencia_agente: [{ agente: 'asesor_tecnico', nombre: 'Asesor Técnico', cantidad: 3, p50_ms: 60000, p95_ms: 190000, maxima_ms: 190000, lentos: 1 }],
+  latencia_herramienta: [{ herramienta: 'consultar_glosario', nombre: 'Glosario', cantidad: 4, p50_ms: 200, p95_ms: 700, maxima_ms: 700, fallidas: 0 }],
+  traza: [{
+    workflow_id: 'w1', titulo: 'Consulta de saldos', modo: 'creacion', estado: 'ok', inicio: '2030-01-01T10:00:00Z', fin: '2030-01-01T10:06:00Z',
+    duracion_ms: 250000, costo_usd: 0.029, consultas_mcp: 6, lento: true,
+    paso: [{ agente: 'asesor_tecnico', nombre: 'Asesor Técnico', duracion_ms: 190000, intentos: 1, exitoso: true, codigo_error: null }],
+  }],
+};
+
+test.describe('Observabilidad', { tag: ['@mantenimiento', '@observabilidad'] }, () => {
+  test('muestra alertas, el tope de gasto, la latencia y las trazas', async ({ page }) => {
+    await ingresarComo(page, USUARIO_ADMINISTRADOR);
+    await page.route('**/api/analista/metricas/observabilidad?**', (route) => route.fulfill({ status: 200, json: OBSERVABILIDAD }));
+
+    await test.step('Abre la pantalla y la ruta tiene solo dos niveles', async () => {
+      await page.goto('/mantenimiento/observabilidad', { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('heading', { level: 1, name: 'Observabilidad' })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'Está en' })).toHaveText(/^\s*Mantenimiento\s*›\s*Observabilidad\s*$/);
+    });
+
+    await test.step('Ve la alerta, el gasto del mes y la latencia', async () => {
+      await expect(page.getByRole('list', { name: 'Alertas' })).toContainText('Advertencia: 1 paso(s) tardaron más de 3 minutos');
+      await expect(page.getByRole('meter', { name: 'Gasto del mes' })).toHaveAttribute('aria-valuenow', '20');
+      await expect(page.getByRole('table', { name: 'Latencia por agente' }).getByRole('row', { name: /Asesor Técnico/ })).toContainText('03:10');
+    });
+
+    await test.step('Abre los pasos de una traza', async () => {
+      const trazas = page.getByRole('list', { name: 'Trazas' });
+      await expect(trazas).toContainText('Terminó');
+      await trazas.getByRole('button', { name: 'Ver 1 paso' }).click();
+      await expect(page.getByRole('list', { name: 'Pasos de Consulta de saldos' })).toContainText('Respondió');
+    });
+  });
+
+  test('sin la acción de observabilidad no aparece en el menú', async ({ page }) => {
+    await ingresarComo(page, USUARIO_CONSULTA);
+    await expect(page.getByRole('link', { name: 'Observabilidad' })).toHaveCount(0);
   });
 });

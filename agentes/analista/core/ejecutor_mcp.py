@@ -22,6 +22,7 @@ from langchain.mcp import MCPAdapter
 from agentes.analista.core.agent_registry import (
     AgentId, allowed_mcp_tools, authorize_mcp_tool, definicion_de, tool_namespace,
 )
+from agentes.metricas.registro_consumo import LlamadaHerramienta, registrar_herramienta
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +180,14 @@ class SesionMCP:
         return salida
 
     async def invocar(self, nombre: str, consulta: str, *, limite: int = LIMITE_RESULTADO) -> ResultadoHerramienta:
+        """Consulta una herramienta y registra cuánto tardó y cómo terminó (para Observabilidad)."""
+        resultado = await self._invocar(nombre, consulta, limite=limite)
+        await registrar_herramienta(LlamadaHerramienta(
+            agente=self.agent_id.value, herramienta=nombre, estado=resultado.estado, duracion_ms=resultado.duracion_ms,
+        ))
+        return resultado
+
+    async def _invocar(self, nombre: str, consulta: str, *, limite: int) -> ResultadoHerramienta:
         inicio = time.monotonic()
         tool = self._estado.herramienta.get(nombre)
         try:

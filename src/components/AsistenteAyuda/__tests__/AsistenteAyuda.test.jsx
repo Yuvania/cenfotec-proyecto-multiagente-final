@@ -79,7 +79,7 @@ describe('página de Ayuda', () => {
       expect(within(menu).getByRole('heading', { name: opcion })).toBeInTheDocument();
     });
     expect(within(menu).getByText(/Cambio por decidir/)).toBeInTheDocument();
-    expect(within(menu).getByText(/Calidad › Pruebas automatizadas/)).toBeInTheDocument();
+    expect(within(menu).getByText(/Pruebas automatizadas/)).toBeInTheDocument();
 
     const consulta = within(panel).getByText('Cómo viaja una consulta entre los agentes').closest('.card');
     ['Agente y su MCP', 'Pinecone', 'OpenCode'].forEach((quien) => {

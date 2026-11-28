@@ -109,8 +109,6 @@ export const EnvolturaPaginaComponent = () => {
             <nav className="migas" aria-label="Está en">
               <span>{migas.grupo}</span>
               <span aria-hidden="true">›</span>
-              <span>{migas.seccion}</span>
-              <span aria-hidden="true">›</span>
               {migas.esPrincipal
                 ? <span aria-current="page">{migas.opcion.etiqueta}</span>
                 : <Link to={migas.opcion.destino}>{migas.opcion.etiqueta}</Link>}

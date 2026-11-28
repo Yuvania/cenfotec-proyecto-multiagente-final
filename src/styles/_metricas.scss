@@ -1,7 +1,7 @@
 @use './variables' as *;
 @use './mixins' as *;
 
-// Métricas › Consumo del modelo y la sección de consumo del detalle de una HU. Solo variables del tema.
+// Consumo del modelo y la sección de consumo del detalle de una HU. Solo variables del tema.
 // Los gráficos son de una sola serie en el color principal (validado en claro y oscuro); el texto usa los
 // colores de texto, nunca el de la barra.
 .metricas {
@@ -185,5 +185,82 @@
       td, tbody th { display: flex; justify-content: space-between; gap: 1rem; padding: 0.2rem 0; border-bottom: 0; text-align: right; }
       td::before, tbody th::before { content: attr(data-etiqueta); color: $color-text-muted; font-size: 0.75rem; text-align: left; }
     }
+  }
+}
+
+// Mantenimiento › Observabilidad. El estado de cada traza lleva ícono y texto, nunca solo color.
+.observabilidad {
+  &__alertas { list-style: none; display: grid; gap: 0.5rem; margin-bottom: 0.75rem; .alert { margin-bottom: 0; } }
+  &__alerta-lista { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
+
+  &__medidor {
+    height: 8px;
+    border-radius: $radius-full;
+    background-color: $color-surface-hover;
+    overflow: hidden;
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  &__medidor-relleno {
+    height: 100%;
+    border-radius: $radius-full;
+    background-color: $color-success;
+
+    &--advertencia { background-color: $color-warning; }
+    &--critica { background-color: $color-danger; }
+  }
+
+  &__trazas { list-style: none; display: grid; gap: 0.75rem; }
+
+  &__traza {
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: 0.75rem;
+    background-color: $color-surface;
+  }
+
+  &__traza-cabecera { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; }
+  &__traza-titulo { font-weight: 600; font-size: 0.9rem; }
+
+  &__traza-boton {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: $color-primary-text;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+
+    &:hover { color: $color-primary-text-hover; text-decoration: underline; }
+  }
+
+  &__pasos {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0 0 0.5rem 1.25rem;
+    font-size: 0.85rem;
+
+    li { display: grid; grid-template-columns: minmax(8rem, 1fr) 5rem minmax(8rem, 1.5fr); gap: 0.5rem; }
+
+    @include mobile {
+      li { grid-template-columns: 1fr auto; }
+      li > span:last-child { grid-column: 1 / -1; color: $color-text-muted; }
+    }
+  }
+
+  &__estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: $radius-full;
+    border: 1px solid transparent;
+    white-space: nowrap;
+
+    &--ok { color: $color-success-text; background-color: $color-success-light; border-color: $color-success-border; }
+    &--advertencia { color: $color-warning-text; background-color: $color-warning-light; border-color: $color-warning-border; }
+    &--critica { color: $color-danger-text; background-color: $color-danger-light; border-color: $color-danger-border; }
   }
 }

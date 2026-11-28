@@ -76,11 +76,23 @@ src/
   data/                           textos de la Ayuda
 ```
 
+### Regla del menú: máximo 2 niveles
+
+El menú tiene **como máximo dos niveles de profundidad**: grupo › opción, por ejemplo **Mantenimiento ›
+Observabilidad**. No se agregan grupos dentro de grupos, submenús, opciones que abran otro menú ni migas de tres
+partes. Las secciones de un grupo (Seguridad, Calidad, Métricas) son solo títulos que ordenan su panel: no son un
+nivel, no se abren y no aparecen en las migas. Una pantalla nueva va suelta (nivel 1) o dentro de un grupo existente
+(nivel 2); si un grupo crece demasiado, se divide en dos grupos del mismo nivel, nunca en un tercer nivel.
+
+Esta regla vale para cualquier persona o herramienta de IA que cambie el proyecto. La protegen
+`PROFUNDIDAD_MAXIMA_MENU` en `src/config/rutas.jsx` y la prueba «el menú no pasa de 2 niveles» de
+`src/config/__tests__/rutas.test.jsx`: si falla, se corrige la pantalla, no la prueba.
+
 ## Cómo se hace cada cambio
 
 | Cambio | Qué se toca |
 |---|---|
-| Pantalla nueva | Su componente + una entrada en `src/config/rutas.jsx` (con `menu` si va en el menú). |
+| Pantalla nueva | Su componente + una entrada en `src/config/rutas.jsx` (con `menu` si va en el menú), sin pasar de 2 niveles de menú. |
 | Agente nuevo | Carpeta `agentes/equipo/<id>/` con sus cuatro archivos, entrada en `opencode.jsonc`, su `Paso` en la tabla del flujo (`workflow_graph.py`) y su descripción en la Ayuda. Si pide una decisión humana, una entrada en `src/flujo/interrupciones.jsx`. |
 | Paso nuevo en el asistente | Su vista `Paso<Nombre>Component.jsx` en `crear/`, una entrada en `pasosAsistente.js` y su valor en `PASO`; la lógica va en `useCrearHistoria.js`. |
 | Herramienta MCP para un agente existente | Agregarla a `herramienta` (y su namespace a `fuente`) en la definición del agente. |
@@ -95,8 +107,21 @@ Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 ## Pensado para producción
 
 - **Persistencia y reanudación:** cada pausa del flujo guarda un punto de control en la base de datos; se puede retomar otro día o tras un reinicio del servidor.
-- **Observabilidad:** trazas por turno y por etapa (Langfuse) y registros estructurados sin contenido del modelo ni datos personales.
-- **Métricas de consumo:** `OpenCodeClient` registra los tokens y el costo de cada respuesta; `WorkflowRuntime` abre un contexto (flujo, HU, creación o cambio) que heredan todos los agentes, así que un agente nuevo queda medido sin escribir nada. Tabla `consumo_modelo`, pantalla Mantenimiento › Métricas › Consumo del modelo y generaciones en Langfuse. Ver `docs/metricas.md`.
+- **Observabilidad:** pantalla propia, Mantenimiento › Observabilidad (aparte del consumo): alertas con umbrales
+  aprobados (historia que cuesta más de 2 veces el promedio de 30 días, paso de más de 3 minutos, agente con más de
+  10 % de fallos en 24 h con mínimo 5 turnos, error de cuota en la última hora, costo estimado o sin precio, tope de
+  gasto), latencia p50/p95/máxima por agente y por herramienta MCP (tabla `llamada_herramienta`) y el estado de cada
+  traza. En Langfuse, todas las llamadas de un flujo van a una traza y las de una HU a una sesión. Registros
+  estructurados sin contenido del modelo ni datos personales. Ver `docs/metricas.md`.
+- **Tope de gasto (kill-switch financiero):** `PresupuestoService` revisa, antes de cada llamada al modelo
+  (`OpenCodeClient.submit_prompt`), lo gastado por el flujo (`PRESUPUESTO_HISTORIA_USD`, 0,50) y por el mes
+  (`PRESUPUESTO_MENSUAL_USD`, 60). Si se pasó, la llamada no se hace: `PRESUPUESTO_AGOTADO`, sin reintentos, aviso
+  «Falló un agente» y la persona termina la historia en modo manual (supervisión humana por excepción).
+- **Model router:** cada agente declara `nivel_modelo` en su `definicion.py` (`liviano` o `principal`). Con
+  `OPENCODE_MODELO_LIVIANO_ID` configurado, los livianos usan ese modelo y, si fallan (salida inválida, modelo no
+  disponible, cuota de ese modelo), el turno se repite una vez con el principal. El tope de gasto, la clave inválida
+  y el tiempo agotado no se escalan.
+- **Métricas de consumo:** `OpenCodeClient` registra los tokens y el costo de cada respuesta; `WorkflowRuntime` abre un contexto (flujo, HU, creación o cambio) que heredan todos los agentes, así que un agente nuevo queda medido sin escribir nada. Tabla `consumo_modelo`, pantalla Mantenimiento › Consumo del modelo y generaciones en Langfuse. Ver `docs/metricas.md`.
 - **Seguridad:** inicio de sesión por usuario; usuarios con roles y roles con acciones (pestaña Mantenimiento), validados en cada ruta de la API; agentes sin permisos en OpenCode, herramientas MCP de solo lectura por rol, entradas tratadas como no confiables y aprobación siempre humana.
 - **Configuración por entorno:** claves y URLs por variables de entorno; despliegue en contenedor (ver `DESPLIEGUE.md`).
 - **Diseño:** marca «Ciruela corporativa» documentada en `docs/marca.md`; colores solo como variables de tema, dos familias tipográficas y una estructura que se adapta a web, tablet y móvil. Pruebas de estructura la protegen.
@@ -137,7 +162,7 @@ no cambiaría.
 - **Aviso de fallo** (`core/aviso_fallo.py`): si el agente no termina, quien creó la historia recibe en
   Notificaciones «Falló un agente», con el agente y el motivo, sin detalles internos. No se repite mientras esté sin
   leer y se cierra solo cuando el flujo vuelve a avanzar.
-- **Fiabilidad**: cada turno queda en `turno_agente` y se ve por agente en Mantenimiento › Métricas.
+- **Fiabilidad**: cada turno queda en `turno_agente` y se ve por agente en Mantenimiento › Consumo del modelo, y su latencia y alertas en Mantenimiento › Observabilidad.
 
 ## Convenciones
 
