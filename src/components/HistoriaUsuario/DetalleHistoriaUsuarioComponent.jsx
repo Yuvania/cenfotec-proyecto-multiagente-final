@@ -17,12 +17,16 @@ import { SeccionRevisionesComponent } from './detalle/SeccionRevisionesComponent
 import { SeccionAnalisisComponent } from './detalle/SeccionAnalisisComponent';
 import { SeccionPlantillaComponent } from './detalle/SeccionPlantillaComponent';
 import { SECCION_INICIAL, construirSecciones, seccionActiva } from './detalle/secciones';
+import { ConsumoHistoriaComponent } from '../Metricas/ConsumoHistoriaComponent';
+import { useSesion } from '../Sesion/SesionContext';
+import { ACCION } from '../../config/acciones';
 
 // Contenedor: carga la HU, decide la navegación y delega cada sección en su componente.
 // Todas las secciones quedan montadas (solo se oculta la inactiva) para no perder lo escrito al cambiar de pestaña.
 export const DetalleHistoriaUsuarioComponent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { puede } = useSesion();
   const [story, setStory] = useState(null);
   const [seccionPedida, setSeccionPedida] = useState(SECCION_INICIAL);
 
@@ -46,7 +50,8 @@ export const DetalleHistoriaUsuarioComponent = () => {
     );
   }
 
-  const secciones = construirSecciones(story);
+  const puedeVerConsumo = puede(ACCION.METRICA_VER);
+  const secciones = construirSecciones(story, { puedeVerConsumo });
   const activa = seccionActiva(secciones, seccionPedida);
   const contenido = {
     historia: <SeccionHistoriaComponent story={story} />,
@@ -69,6 +74,7 @@ export const DetalleHistoriaUsuarioComponent = () => {
     revisiones: <SeccionRevisionesComponent story={story} />,
     analisis: story.analysis && <SeccionAnalisisComponent story={story} />,
     plantilla: <SeccionPlantillaComponent story={story} />,
+    consumo: puedeVerConsumo && <ConsumoHistoriaComponent historiaId={story.id} />,
   };
 
   return (

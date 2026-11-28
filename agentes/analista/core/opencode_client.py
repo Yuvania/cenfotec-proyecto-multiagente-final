@@ -23,6 +23,7 @@ from agentes.analista.core.opencode_compat import (
     SUPPORTED_OPENCODE_VERSIONS,
     is_supported_opencode_version,
 )
+from agentes.metricas.registro_consumo import registrar_uso, uso_desde_mensaje
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -141,6 +142,9 @@ class OpenCodeClient:
         self._client = client
         self._owns_client = client is None
         self._deadline: float | None = None
+        # Precio anunciado de cada modelo elegido (USD por millón de tokens), para estimar el costo de una
+        # respuesta cuando OpenCode no lo informa.
+        self._precio_modelo: dict[tuple[str, str], Any] = {}
 
     async def __aenter__(self) -> "OpenCodeClient":
         if self._client is None:
@@ -320,6 +324,7 @@ class OpenCodeClient:
                 "MODEL_UNAVAILABLE",
                 "El modelo no tiene costo cero verificado; configura OPENCODE_PROVIDER_ID y OPENCODE_MODEL_ID para autorizarlo explícitamente.",
             )
+        self._precio_modelo[(provider_id, str(match["modelID"]))] = match.get("cost")
         return {"providerID": provider_id, "id": str(match["modelID"])}
 
     async def create_session(
@@ -371,6 +376,8 @@ class OpenCodeClient:
                         continue
                     if isinstance(created, str) and isinstance(after, str) and created <= after:
                         continue
+                # Toda respuesta terminada consume tokens, también la que falló: se registra antes de revisarla.
+                await self._registrar_consumo(record)
                 if record.get("finish") == "error" or record.get("error"):
                     error = record.get("error") or {}
                     error_type = str(error.get("type", "")).lower() if isinstance(error, Mapping) else ""
@@ -401,9 +408,20 @@ class OpenCodeClient:
                     raise OpenCodeClientError("OPENCODE_INCOMPATIBLE", "El mensaje assistant no contiene texto utilizable.")
                 if any(part.get("type") == "tool" for part in content):
                     raise OpenCodeClientError("OPENCODE_INCOMPATIBLE", "La respuesta incluyó una parte de herramienta no permitida.")
-                return {"text": text, "finish": record.get("finish"), "model": record.get("model")}
+                return {
+                    "text": text, "finish": record.get("finish"), "model": record.get("model"),
+                    "tokens": record.get("tokens"), "cost": record.get("cost"),
+                }
             await asyncio.sleep(min(0.25, max(0, deadline - asyncio.get_running_loop().time())))
         raise OpenCodeClientError("TURN_TIMEOUT", "Se agotó el tiempo de generación del modelo.", retryable=True)
+
+    async def _registrar_consumo(self, record: Mapping[str, Any]) -> None:
+        """Entrega los tokens y el costo de la respuesta al registro de métricas (nunca su contenido)."""
+        modelo = record.get("model") if isinstance(record.get("model"), Mapping) else {}
+        precio = self._precio_modelo.get((str(modelo.get("providerID", "")), str(modelo.get("id", ""))))
+        uso = uso_desde_mensaje(record, precio=precio, agente=self.agent_id)
+        if uso is not None:
+            await registrar_uso(uso)
 
     async def interrupt(self, session_id: str) -> bool:
         result = await self._request(

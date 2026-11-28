@@ -1,0 +1,184 @@
+@use './variables' as *;
+@use './mixins' as *;
+
+// Métricas › Consumo del modelo y la sección de consumo del detalle de una HU. Solo variables del tema.
+// Los gráficos son de una sola serie en el color principal (validado en claro y oscuro); el texto usa los
+// colores de texto, nunca el de la barra.
+.metricas {
+  &__tarjeta {
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1.25rem;
+    min-width: 0;
+  }
+
+  &__subtitulo { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; }
+  &__subtitulo--aparte { margin-top: 1.25rem; }
+  &__nota { font-size: 0.8rem; color: $color-text-muted; margin-bottom: 0.75rem; }
+  &__vacio { font-size: 0.875rem; color: $color-text-muted; }
+  &__texto { font-size: 0.875rem; color: $color-text-secondary; line-height: 1.5; }
+  &__numero { font-variant-numeric: tabular-nums; text-align: right; }
+  &__resumen-historia { font-size: 0.95rem; margin-bottom: 1rem; font-variant-numeric: tabular-nums; }
+
+  &__lista {
+    list-style: none;
+    font-size: 0.85rem;
+    color: $color-text-secondary;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    code { font-family: $font-mono; font-size: 0.8rem; color: $color-text-primary; }
+  }
+
+  // Filtro del periodo: una fila arriba de todo.
+  &__filtros { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+
+  &__filtro {
+    min-height: 36px;
+    border: 1px solid $color-border;
+    background-color: $color-surface;
+    color: $color-text-secondary;
+    border-radius: $radius-full;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &:hover { border-color: $color-primary-border; }
+    &:focus-visible { outline: 2px solid $focus-ring; outline-offset: $focus-ring-offset; }
+    &[aria-pressed='true'] { background-color: $color-primary-light; border-color: $color-primary-border; color: $color-primary-text; font-weight: 500; }
+  }
+
+  // Indicadores: cinco en web, tres en tablet y dos en móvil.
+  &__indicadores {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+
+    @include tablet { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @include mobile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  &__indicador {
+    background-color: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+    padding: 0.75rem 0.9rem;
+    min-width: 0;
+  }
+
+  &__indicador-etiqueta { font-size: 0.75rem; color: $color-text-muted; }
+  &__indicador-valor { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  &__indicador-detalle { font-size: 0.75rem; color: $color-text-secondary; }
+
+  &__columnas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+
+    @include tablet { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    @include mobile { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+
+  // Barras horizontales: nombre, barra (14 px, extremo redondeado de 4 px, recta en la base) y valores.
+  &__barras {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  &__barra-nombre { text-align: left; font-weight: 500; white-space: nowrap; padding-right: 0.75rem; width: 1%; }
+  &__barra-pista { width: 100%; min-width: 80px; }
+
+  &__barra {
+    display: block;
+    height: 14px;
+    background-color: $color-primary;
+    border-radius: 0 4px 4px 0;
+  }
+
+  &__barra-valor { padding-left: 0.75rem; font-weight: 600; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+  &__barra-detalle { padding-left: 0.75rem; color: $color-text-muted; white-space: nowrap; text-align: right; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+  &__barra-fila:hover &__barra { background-color: $color-primary-hover; }
+
+  @include mobile {
+    &__barra-detalle { display: none; }
+  }
+
+  // Columnas por día: hasta 24 px de ancho, extremo redondeado arriba, con la fecha debajo.
+  &__columnas-figura { margin: 0; }
+
+  &__columnas {
+    list-style: none;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid $color-border;
+    position: relative;
+  }
+
+  &__columna {
+    flex: 1 1 0;
+    max-width: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    position: relative;
+  }
+
+  &__columna-barra {
+    display: block;
+    width: 100%;
+    background-color: $color-primary;
+    border-radius: 4px 4px 0 0;
+  }
+
+  &__columna:hover &__columna-barra { background-color: $color-primary-hover; }
+
+  &__columna-dia {
+    position: absolute;
+    bottom: -1.3rem;
+    font-size: 0.7rem;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  // Tabla por historia; en móvil cada fila es una tarjeta con la etiqueta de cada dato.
+  &__tabla-contenedor { overflow-x: auto; }
+
+  &__tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+
+    th {
+      text-align: left;
+      font-weight: 500;
+      font-size: 0.75rem;
+      color: $color-text-muted;
+      padding: 0.5rem;
+      border-bottom: 1px solid $color-border;
+    }
+
+    th.metricas__numero { text-align: right; }
+    td { padding: 0.6rem 0.5rem; border-bottom: 1px solid $color-border; vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+
+    @include mobile {
+      thead { display: none; }
+      tr { display: block; padding: 0.6rem 0; border-bottom: 1px solid $color-border; }
+      tr:last-child { border-bottom: 0; }
+      td { display: flex; justify-content: space-between; gap: 1rem; padding: 0.2rem 0; border-bottom: 0; text-align: right; }
+      td::before { content: attr(data-etiqueta); color: $color-text-muted; font-size: 0.75rem; text-align: left; }
+    }
+  }
+}

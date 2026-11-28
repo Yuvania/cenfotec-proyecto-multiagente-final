@@ -19,6 +19,7 @@ import { MantenimientoRolesComponent, MantenimientoUsuariosComponent } from '../
 import { NotificacionesComponent } from '../components/Notificaciones/NotificacionesComponent';
 import { PruebasComponent } from '../components/Pruebas/PruebasComponent';
 import { ResultadoPruebaComponent } from '../components/Pruebas/ResultadoPruebaComponent';
+import { ConsumoModeloComponent } from '../components/Metricas/ConsumoModeloComponent';
 
 // Grupos del menú: una opción que se abre y muestra sus opciones por sección.
 // En web se despliega en la barra lateral, en tablet se abre un panel y en móvil va dentro de «Más».
@@ -26,12 +27,13 @@ export const listaGrupoMenu = Object.freeze([
   {
     id: 'mantenimiento',
     etiqueta: 'Mantenimiento',
-    titulo: 'Usuarios, roles y pruebas de la aplicación',
+    titulo: 'Usuarios, roles, pruebas y consumo del modelo',
     icono: Settings,
     orden: 80,
     listaSeccion: [
       { id: 'seguridad', titulo: 'Seguridad' },
       { id: 'calidad', titulo: 'Calidad' },
+      { id: 'metricas', titulo: 'Métricas' },
     ],
   },
 ]);
@@ -101,6 +103,12 @@ export const listaRuta = Object.freeze([
     menu: { etiqueta: 'Pruebas automatizadas', corta: 'Pruebas', titulo: 'Ejecutar las pruebas de la aplicación y ver sus resultados', orden: 83, grupo: 'mantenimiento', seccion: 'calidad' },
   },
   { ruta: 'mantenimiento/pruebas/:id', componente: ResultadoPruebaComponent, accion: ACCION.PRUEBA_VER },
+  {
+    ruta: 'mantenimiento/consumo',
+    componente: ConsumoModeloComponent,
+    accion: ACCION.METRICA_VER,
+    menu: { etiqueta: 'Consumo del modelo', corta: 'Consumo', titulo: 'Tokens y costo por historia, por agente y por día', orden: 84, grupo: 'mantenimiento', seccion: 'metricas' },
+  },
   { ruta: 'mantenimiento', componente: redirigir('/mantenimiento/usuarios') },
   { ruta: 'pruebas', componente: redirigir('/mantenimiento/pruebas') },
   { ruta: 'pruebas/:id', componente: redirigir('/mantenimiento/pruebas/:id') },

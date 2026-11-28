@@ -31,6 +31,22 @@ vi.mock('../services/pendientesApi.js', () => ({
   },
 }));
 
+// Métricas: sin consumo registrado, salvo que una prueba diga otra cosa.
+const TOTAL_VACIO = {
+  llamadas: 0, tokens_entrada: 0, tokens_salida: 0, tokens_razonamiento: 0, tokens_cache: 0, tokens_total: 0,
+  costo_usd: 0, duracion_ms: 0, fallidas: 0,
+};
+vi.mock('../services/metricasApi.js', () => ({
+  metricasApi: {
+    leerConsumo: vi.fn(async (periodo) => ({
+      periodo, lista_periodo: [{ codigo: '7', nombre: 'Últimos 7 días' }, { codigo: '30', nombre: 'Últimos 30 días' }, { codigo: 'todo', nombre: 'Todo' }],
+      total: TOTAL_VACIO, promedio_creacion: null, promedio_cambio: null, por_agente: [], por_modelo: [], por_dia: [],
+      por_flujo: [], prueba: null, aviso_costo: null,
+    })),
+    leerConsumoHistoria: vi.fn(async (historiaId) => ({ historia_id: historiaId, total: TOTAL_VACIO, por_agente: [], por_flujo: [] })),
+  },
+}));
+
 afterEach(() => {
   cleanup();
 });

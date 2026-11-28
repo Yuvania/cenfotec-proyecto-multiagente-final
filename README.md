@@ -85,6 +85,7 @@ Todos los agentes siguen el ciclo **percibir → pensar → actuar** (`agentes/a
 - **Control humano:** ningún agente aprueba historias. Negocio responde, la persona que redacta la HU toma las decisiones de impacto y el Product Owner aprueba.
 - **MCP propio y MCP de terceros:** los agentes del flujo usan servidores MCP propios (FastMCP) sobre la base de conocimiento; el Agente de Pruebas usa Playwright MCP, el servidor oficial de Microsoft, y el backend solo le permite 10 de sus herramientas y solo la dirección de la aplicación de prueba.
 - **Trazabilidad:** la sección *Cómo trabajó el agente* muestra qué decidió consultar cada agente y por qué; Langfuse registra cada paso.
+- **Métricas de consumo:** cada respuesta del modelo guarda sus tokens y su costo (los entrega OpenCode), asociados a su historia y a su agente. Mantenimiento › Métricas › Consumo del modelo muestra el costo promedio por historia creada y por cambio, por agente y por día; el detalle de cada HU muestra lo que costó. Ver [docs/metricas.md](docs/metricas.md).
 
 ### Persistencia de los flujos
 
@@ -142,7 +143,7 @@ Para herramientas de IA, la skill `marca-diseno` (en `.agents/skills` y `.claude
 | Herramientas | FastMCP y el adaptador MCP de LangChain, con un servidor por agente |
 | Conocimiento (RAG) | Pinecone con `multilingual-e5-large` en seis espacios de nombres, carga automática y copia local de respaldo |
 | Datos | TiDB Cloud (compatible con MySQL); SQLite en local y en pruebas |
-| Observabilidad | Langfuse y registros del servidor |
+| Observabilidad | Langfuse, registros del servidor y métricas de tokens y costo por historia y por agente |
 | Pruebas | Vitest, Testing Library, Playwright, pytest y pytest-asyncio |
 | Integración y despliegue | GitHub Actions, Docker y Render |
 
@@ -217,6 +218,7 @@ La aplicación completa (interfaz, backend y OpenCode) se publica como un único
 - [Marca e identidad visual](docs/marca.md)
 - [Guía de ejecución local](docs/GUIA-LOCAL.md)
 - [Pruebas automatizadas con Playwright](docs/pruebas-automatizadas.md)
+- [Métricas: consumo de tokens y costo del modelo](docs/metricas.md)
 - [Guía de pruebas y arranque en PowerShell](docs/GUIA-PRUEBAS-ARRANQUE-POWERSHELL.md)
 - [Evaluación del Asesor Técnico](docs/evaluacion-asesor-tecnico.md)
 - [Base de conocimiento e ingesta en Pinecone](agentes/conocimiento/README.md)

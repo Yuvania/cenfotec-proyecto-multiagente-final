@@ -181,7 +181,8 @@ def test_sigue_el_avance_y_al_terminar_guarda_el_resumen(servicio, github):
     _forzar_sincronizacion(servicio, ejecucion_id)
     detalle = cliente.get(f"/api/analista/pruebas/ejecuciones/{ejecucion_id}").json()
     assert detalle["estado"] == "con_fallos"
-    assert detalle["resumen"] == {k: v for k, v in RESUMEN.items() if k not in ("casos", "version")}
+    # Sin fallos diagnosticados no hay consumo del Agente de Pruebas.
+    assert detalle["resumen"] == {k: v for k, v in RESUMEN.items() if k not in ("casos", "version")} | {"consumo": None}
     assert [c["estado"] for c in detalle["casos"]] == ["fallido", "aprobado", "aprobado"]
     # El diagnóstico del Agente de Pruebas se guarda; uno mal formado se descarta sin perder el caso.
     assert detalle["casos"][0]["diagnostico"]["tipo"] == "error_aplicacion"

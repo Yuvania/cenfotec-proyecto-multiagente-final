@@ -104,6 +104,18 @@ class CasoResumen(BaseModel):
         return [paso[:200] for paso in valor]
 
 
+class ConsumoDiagnostico(BaseModel):
+    """Tokens y costo del Agente de Pruebas en una ejecución (los suma ``diagnosticar.py``)."""
+    model_config = ConfigDict(extra="ignore")
+    llamadas: int = Field(default=0, ge=0)
+    tokens_entrada: int = Field(default=0, ge=0)
+    tokens_salida: int = Field(default=0, ge=0)
+    tokens_razonamiento: int = Field(default=0, ge=0)
+    tokens_cache: int = Field(default=0, ge=0)
+    tokens_total: int = Field(default=0, ge=0)
+    costo_usd: float = Field(default=0.0, ge=0)
+
+
 class ResumenEjecucion(BaseModel):
     """Lo que publica ``e2e/soporte/reportero-resumen.js``. Se valida antes de guardarlo."""
     model_config = ConfigDict(extra="ignore")
@@ -116,6 +128,17 @@ class ResumenEjecucion(BaseModel):
     inicio: str | None = Field(default=None, max_length=40)
     navegador: str | None = Field(default=None, max_length=20)
     casos: list[CasoResumen] = Field(default_factory=list)
+    consumo: ConsumoDiagnostico | None = None
+
+    @field_validator("consumo", mode="before")
+    @classmethod
+    def _consumo_valido(cls, valor: Any) -> Any:
+        # Un consumo mal formado no invalida el resumen: queda sin consumo.
+        try:
+            return ConsumoDiagnostico.model_validate(valor) if valor is not None else None
+        except ValidationError:
+            logger.warning("consumo_no_valido", extra={"event": "consumo_no_valido"})
+            return None
 
     @field_validator("casos")
     @classmethod
@@ -250,6 +273,16 @@ class PruebasService:
         lista_caso = [{**caso, "modulo_nombre": nombre_de_etiqueta(caso.get("modulo") or "")}
                       for caso in resumen.get("casos", [])]
         return {**self.publica(ejecucion), "casos": lista_caso}
+
+    def consumo_desde(self, desde: str | None) -> dict[str, Any]:
+        """Lo que consumió el Agente de Pruebas en las ejecuciones terminadas desde una fecha (para Métricas)."""
+        lista = [
+            e["resumen"]["consumo"] for e in self.repositorio.listar_finalizada_desde(desde)
+            if isinstance(e.get("resumen"), dict) and isinstance(e["resumen"].get("consumo"), dict)
+        ]
+        total = {clave: sum(int(c.get(clave) or 0) for c in lista)
+                 for clave in ("llamadas", "tokens_entrada", "tokens_salida", "tokens_razonamiento", "tokens_cache", "tokens_total")}
+        return {"ejecuciones": len(lista), **total, "costo_usd": round(sum(float(c.get("costo_usd") or 0) for c in lista), 8)}
 
     def obtener(self, ejecucion_id: str) -> dict[str, Any]:
         ejecucion = self.repositorio.obtener(ejecucion_id)

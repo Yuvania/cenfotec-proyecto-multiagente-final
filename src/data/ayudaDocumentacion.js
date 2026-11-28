@@ -172,6 +172,7 @@ export const NOTA_FLUJO_CONSULTA = [
   'Son 4 agentes y 4 servidores MCP, uno por agente. Cada MCP solo tiene las herramientas de su agente: el Analista consulta glosario, HU aprobadas, estándares y checklist; el Asesor Técnico, código, estándares y HU aprobadas; el Redactor-Revisor, estándares, checklist y HU aprobadas; y el Gestor de Cambios, HU aprobadas, lecciones y checklist.',
   'El Gestor de Cambios sigue el mismo recorrido cuando llega una solicitud de cambio sobre una HU aprobada.',
   'Langfuse registra cada paso, para saber qué hizo cada agente y dónde se detuvo.',
+  'Cada respuesta de OpenCode trae sus tokens y su costo: se guardan asociados a la historia y al agente. Así se sabe cuánto cuesta crear o cambiar una historia (Mantenimiento › Métricas › Consumo del modelo).',
 ];
 
 export const FLUJO_PRUEBAS = [
@@ -226,11 +227,12 @@ export const OPCION_MENU = [
   },
   {
     titulo: 'Mantenimiento',
-    texto: 'Lo que administra el sistema, en dos secciones:',
+    texto: 'Lo que administra el sistema, en tres secciones:',
     puntos: [
       'Seguridad › Usuarios: a cada persona se le asignan sus roles.',
       'Seguridad › Roles y acciones: a cada rol se le marcan sus acciones, por ejemplo Aprobar historia.',
       'Calidad › Pruebas automatizadas: ejecutar las pruebas y ver los resultados con el diagnóstico del Agente de Pruebas.',
+      'Métricas › Consumo del modelo: cuántos tokens y cuánto dinero gasta cada historia, cada agente y cada día.',
     ],
   },
   {
@@ -251,6 +253,7 @@ export const TECNOLOGIAS = [
   { titulo: 'Repositorio de código', texto: 'Un repositorio de GitHub de solo lectura (de ejemplo, codigo-ejemplo-polizas) que el Asesor Técnico revisa. Se copia al arrancar el servicio.' },
   { titulo: 'Datos', texto: 'TiDB Cloud (compatible con MySQL) con SQLAlchemy y PyMySQL: historias, Repositorio de HU, cambios, lecciones, flujos en proceso, usuarios, roles y avisos. En local y en pruebas, SQLite.' },
   { titulo: 'Trazabilidad', texto: 'Langfuse para seguir cada paso de los agentes, y registros del servidor que indican la causa cuando un flujo se detiene, sin guardar lo que generó el modelo.' },
+  { titulo: 'Métricas de consumo', texto: 'Los tokens y el costo de cada respuesta del modelo, tal como los entrega OpenCode, en la tabla consumo_modelo y en Langfuse. Se ven por historia, por agente y por día en Mantenimiento › Métricas › Consumo del modelo, y en el detalle de cada HU.' },
   { titulo: 'Pruebas', texto: 'Vitest y Testing Library en la interfaz; pytest y pytest-asyncio en el backend; Playwright de punta a punta en web, tablet y móvil. GitHub Actions las ejecuta en cada cambio y, a pedido, desde Mantenimiento › Pruebas automatizadas.' },
   { titulo: 'Despliegue', texto: 'Docker en una sola imagen (interfaz compilada, backend y OpenCode), publicada en Render con despliegue automático desde la rama main. Con docker compose la misma imagen corre en cualquier computadora.' },
 ];
@@ -368,7 +371,7 @@ export const TIPOGRAFIA_DISENO = [
 ];
 
 export const DISPOSITIVO_DISENO = [
-  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px. Mantenimiento se despliega con sus secciones (Seguridad y Calidad) y la pantalla muestra su ruta: Mantenimiento › Calidad › Pruebas automatizadas.' },
+  { titulo: 'Web', texto: 'Barra lateral de 232 px con el menú, la persona y el cambio de tema; contenido de hasta 1200 px. Mantenimiento se despliega con sus secciones (Seguridad, Calidad y Métricas) y la pantalla muestra su ruta: Mantenimiento › Calidad › Pruebas automatizadas.' },
   { titulo: 'Tablet', texto: 'La barra queda en íconos de 72 px, con nombre accesible y texto emergente. Mantenimiento abre un panel al lado con sus opciones.' },
   { titulo: 'Móvil', texto: 'Barra superior con la marca y la sesión; abajo, Inicio, Avisos, Historias y «Más», que abre una hoja con Mantenimiento y Ayuda. Una columna y botones de 44 px.' },
   { titulo: 'Modo claro y oscuro', texto: 'Lo elige la persona; cada color tiene su par oscuro con contraste AA.' },
@@ -405,6 +408,7 @@ export const PRODUCCION_ARQUITECTURA = [
   'Diseño: paleta de colores y tipografía documentadas, con comportamiento definido en web, tablet y móvil, en modo claro y oscuro. Las pruebas impiden que un cambio funcional las altere.',
   'Persistencia: cada pausa del flujo se guarda en la base de datos; se puede retomar otro día o después de un reinicio del servidor.',
   'Observabilidad: trazas por turno y por etapa, y registros estructurados que no guardan lo que genera el modelo ni datos personales.',
+  'Costo medible: tokens y costo de cada llamada al modelo, por historia y por agente; se sabe cuánto cuesta crear o cambiar una historia.',
   'Seguridad: inicio de sesión por usuario y permisos por acción (cada rol tiene sus acciones y cada usuario sus roles), validados en el servidor; agentes sin permisos propios, herramientas de solo lectura por agente, entradas tratadas como no confiables y aprobación siempre humana.',
   'Configuración por entorno y despliegue en contenedor: las claves y direcciones no están en el código.',
   'Calidad: pruebas de backend, frontend y de extremo a extremo en la integración continua, más las pruebas de estructura.',

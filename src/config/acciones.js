@@ -20,4 +20,5 @@ export const ACCION = Object.freeze({
   ROL_ADMINISTRAR: 'rol.administrar',
   PRUEBA_VER: 'prueba.ver',
   PRUEBA_EJECUTAR: 'prueba.ejecutar',
+  METRICA_VER: 'metrica.ver',
 });

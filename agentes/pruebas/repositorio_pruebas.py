@@ -98,6 +98,13 @@ class RepositorioPrueba:
         with self.motor.connect() as conexion:
             return [_fila(fila) for fila in conexion.execute(consulta)]
 
+    def listar_finalizada_desde(self, desde: str | None, limite: int = 500) -> list[dict[str, Any]]:
+        consulta = select(prueba_ejecucion).where(prueba_ejecucion.c.estado.in_(ESTADO_FINAL))
+        if desde:
+            consulta = consulta.where(prueba_ejecucion.c.finalizado_en >= desde)
+        with self.motor.connect() as conexion:
+            return [_fila(fila) for fila in conexion.execute(consulta.order_by(prueba_ejecucion.c.numero.desc()).limit(limite))]
+
     def activa(self) -> dict[str, Any] | None:
         """La ejecución que todavía no termina, si hay. Solo se permite una a la vez."""
         consulta = (select(prueba_ejecucion).where(prueba_ejecucion.c.estado.in_(ESTADO_ACTIVO))

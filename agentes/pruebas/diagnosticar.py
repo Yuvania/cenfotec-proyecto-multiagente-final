@@ -8,7 +8,7 @@ corre OpenCode):
 Entrada: el ``resumen.json`` del reportero de Playwright. Salida (solo JSON por la salida estándar; los
 registros van a la salida de error):
 
-    {"diagnosticos": {"<id del caso>": {...}}, "omitidos": 2}
+    {"diagnosticos": {"<id del caso>": {...}}, "omitidos": 2, "consumo": {"llamadas": 7, "tokens_total": ..., "costo_usd": ...}}
 
 Un mismo caso que falla en web, tablet y móvil se diagnostica una vez. Como máximo se diagnostican
 ``PROBADOR_MAXIMO_CASO`` casos (3 por defecto) para cuidar la cuota del modelo.
@@ -25,6 +25,9 @@ from typing import Any
 from pydantic import ValidationError
 
 from agentes.equipo.probador.probador_service import CasoFallido, ProbadorService
+from agentes.metricas.registro_consumo import (
+    MODO_PRUEBA, AcumuladorConsumo, agregar_registrador, contexto_consumo, quitar_registrador,
+)
 from agentes.pruebas.navegador_playwright_service import NavegadorPlaywrightService
 
 logger = logging.getLogger("agentes.pruebas.diagnosticar")
@@ -64,6 +67,20 @@ async def diagnosticar(resumen: dict[str, Any]) -> dict[str, Any]:
     seleccion, omitidos = agrupar_fallidos(resumen, _entero("PROBADOR_MAXIMO_CASO", 3, 10))
     servicio = ProbadorService(lambda: NavegadorPlaywrightService(url_mcp, base_url), base_url)
     salida: dict[str, Any] = {"diagnosticos": {}, "omitidos": omitidos}
+    # El consumo del modelo se suma en memoria: este proceso corre en GitHub y su base no se conserva.
+    acumulador = AcumuladorConsumo()
+    agregar_registrador(acumulador)
+    try:
+        with contexto_consumo(modo=MODO_PRUEBA, titulo="Diagnóstico de pruebas"):
+            await _diagnosticar_seleccion(servicio, seleccion, salida)
+    finally:
+        quitar_registrador(acumulador)
+    salida["consumo"] = acumulador.resumen()
+    return salida
+
+
+async def _diagnosticar_seleccion(servicio: ProbadorService, seleccion: list[tuple[CasoFallido, list[str]]],
+                                  salida: dict[str, Any]) -> None:
     for caso, lista_id in seleccion:
         try:
             diagnostico, exploracion = await servicio.diagnosticar(caso)
@@ -74,7 +91,6 @@ async def diagnosticar(resumen: dict[str, Any]) -> dict[str, Any]:
             dato = {"estado": "sin_diagnostico", "motivo": f"El Agente de Pruebas no pudo diagnosticar ({type(exc).__name__})."}
         for caso_id in lista_id:
             salida["diagnosticos"][caso_id] = dato
-    return salida
 
 
 def main() -> None:

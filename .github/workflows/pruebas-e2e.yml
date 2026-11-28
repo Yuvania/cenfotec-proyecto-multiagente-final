@@ -41,6 +41,7 @@ on:
           - usuarios
           - roles
           - pruebas
+          - consumo
       navegador:
         description: Navegador
         type: choice
@@ -177,9 +178,12 @@ jobs:
               if caso.get("id") in salida.get("diagnosticos", {}):
                   caso["diagnostico"] = salida["diagnosticos"][caso["id"]]
           resumen["diagnostico"] = {"omitidos": salida.get("omitidos", 0)}
+          resumen["consumo"] = salida.get("consumo")
           ruta.write_text(json.dumps(resumen, ensure_ascii=False, indent=2), encoding="utf-8")
           listos = sum(1 for d in salida.get("diagnosticos", {}).values() if d.get("estado") == "listo")
           print(f"Casos con diagnóstico: {listos}")
+          consumo = salida.get("consumo") or {}
+          print(f"Consumo del Agente de Pruebas: {consumo.get('tokens_total', 0)} tokens, USD {consumo.get('costo_usd', 0)}")
           PY
 
       - name: Publicar los resultados para el tablero

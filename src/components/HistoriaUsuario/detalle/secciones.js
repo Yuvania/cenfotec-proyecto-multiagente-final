@@ -34,10 +34,13 @@ const DEFINICION = [
   },
   { id: 'analisis', titulo: 'Análisis del requerimiento', visible: (story) => Boolean(story.analysis) },
   { id: 'plantilla', titulo: 'Datos de la plantilla', visible: tienePlantilla },
+  // Solo para quien puede ver las métricas (acción «Ver el consumo del modelo»).
+  { id: 'consumo', titulo: 'Consumo del modelo', visible: (_story, opcion) => Boolean(opcion.puedeVerConsumo) },
 ];
 
-export function construirSecciones(story) {
-  return DEFINICION.filter((seccion) => seccion.visible(story)).map(({ id, titulo, contador }) => ({
+// opcion.puedeVerConsumo: si la persona tiene la acción de métricas.
+export function construirSecciones(story, opcion = {}) {
+  return DEFINICION.filter((seccion) => seccion.visible(story, opcion)).map(({ id, titulo, contador }) => ({
     id,
     titulo,
     contador: contador ? contador(story) : null,

@@ -19,6 +19,7 @@ from agentes.analista.core.flujo import FIN, Paso, Ruta, construir_flujo
 from agentes.equipo.gestor_cambios.gestor_cambios_service import GestorCambiosService
 from agentes.analista.core.conversation_store import ConversationStore, StoreError
 from agentes.analista.core.models import AgentTurnResponse, SendMessageRequest, QuestionState
+from agentes.metricas.registro_consumo import MODO_CAMBIO, MODO_CREACION, contexto_consumo
 from agentes.analista.core.observability import Observability
 from agentes.analista.core.prompt_loader import load_prompt
 from agentes.equipo.redactor_revisor.redactor_revisor_service import RedactorRevisorService
@@ -927,6 +928,10 @@ class WorkflowRuntime:
             "estado": "en_ejecucion",
             "creado_en": None,
             "actualizado_en": None,
+            # La HU a la que se carga el consumo del modelo: la aprobada en un cambio; si no, el propio flujo,
+            # que al aprobarse pasa a ser el id de la HU.
+            "historia_id": (request.approved_story_id if request else None) or str(workflow_id),
+            "modo": MODO_CAMBIO if request and request.approved_story_id else MODO_CREACION,
         }
         return workflow_id
 
@@ -993,6 +998,13 @@ class WorkflowRuntime:
             "estado": registro.get("estado"), "creado_en": registro.get("creado_en"),
             "actualizado_en": registro.get("actualizado_en"),
         }
+        try:
+            aprobada = self._graph.get_state(self._thread_config(workflow_id)).values.get("approved_story_id")
+        except Exception as exc:
+            logger.warning("No se pudo leer la HU del flujo %s: %s", workflow_id, type(exc).__name__)
+            aprobada = None
+        self._meta[workflow_id]["historia_id"] = aprobada or str(workflow_id)
+        self._meta[workflow_id]["modo"] = MODO_CAMBIO if aprobada else MODO_CREACION
         return True
 
     def metadatos(self, workflow_id: UUID | str) -> dict[str, Any]:
@@ -1033,8 +1045,14 @@ class WorkflowRuntime:
 
     async def _ejecutar(self, workflow_id: UUID, entrada: Any) -> WorkflowSnapshot:
         """Ejecuta el grafo y guarda el resultado; si falla, lo guarda como error para poder reintentar."""
+        meta = self._meta.get(workflow_id, {})
         try:
-            result = await self._graph.ainvoke(entrada, config=self._thread_config(workflow_id))
+            # Todo lo que consuman los agentes en esta ejecución queda asociado al flujo y a su HU.
+            with contexto_consumo(
+                workflow_id=str(workflow_id), historia_id=meta.get("historia_id") or str(workflow_id),
+                titulo=meta.get("titulo"), modo=meta.get("modo") or MODO_CREACION,
+            ):
+                result = await self._graph.ainvoke(entrada, config=self._thread_config(workflow_id))
         except Exception:
             await asyncio.to_thread(self._persistir, workflow_id, error=True)
             raise

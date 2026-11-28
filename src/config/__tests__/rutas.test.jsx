@@ -20,11 +20,12 @@ describe('registro de pantallas', () => {
     });
   });
 
-  it('Mantenimiento agrupa Seguridad y Calidad, y solo muestra lo permitido', () => {
+  it('Mantenimiento agrupa Seguridad, Calidad y Métricas, y solo muestra lo permitido', () => {
     const grupo = listaOpcionMenu().find((opcion) => opcion.tipo === 'grupo');
     expect(grupo.listaSeccion.map((seccion) => [seccion.titulo, seccion.listaOpcion.map((opcion) => opcion.etiqueta)])).toEqual([
       ['Seguridad', ['Usuarios', 'Roles y acciones']],
       ['Calidad', ['Pruebas automatizadas']],
+      ['Métricas', ['Consumo del modelo']],
     ]);
     const soloPruebas = listaOpcionMenu((accion) => !accion || accion === ACCION.PRUEBA_VER);
     expect(soloPruebas.find((opcion) => opcion.tipo === 'grupo').listaSeccion.map((seccion) => seccion.titulo)).toEqual(['Calidad']);
@@ -41,6 +42,7 @@ describe('registro de pantallas', () => {
       grupo: 'Mantenimiento', seccion: 'Calidad', opcion: { etiqueta: 'Pruebas automatizadas', destino: '/mantenimiento/pruebas' }, esPrincipal: true,
     });
     expect(rutaDeMigas('/mantenimiento/pruebas/abc').esPrincipal).toBe(false);
+    expect(rutaDeMigas('/mantenimiento/consumo').seccion).toBe('Métricas');
     expect(rutaDeMigas('/historias')).toBeNull();
   });
 });

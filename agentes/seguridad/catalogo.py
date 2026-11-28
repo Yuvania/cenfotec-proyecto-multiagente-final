@@ -28,6 +28,7 @@ MODULO_CAMBIO = "Cambios a historias aprobadas"
 MODULO_LECCION = "Lecciones aprendidas"
 MODULO_MANTENIMIENTO = "Mantenimiento"
 MODULO_PRUEBA = "Pruebas automatizadas"
+MODULO_METRICA = "Métricas"
 
 LISTA_ACCION: tuple[Accion, ...] = (
     Accion("historia.ver", "Acceder a Historias de usuario", MODULO_HISTORIA),
@@ -48,6 +49,7 @@ LISTA_ACCION: tuple[Accion, ...] = (
     Accion("rol.administrar", "Crear roles y asignarles acciones", MODULO_MANTENIMIENTO),
     Accion("prueba.ver", "Acceder a Pruebas automatizadas", MODULO_PRUEBA),
     Accion("prueba.ejecutar", "Ejecutar pruebas automatizadas", MODULO_PRUEBA),
+    Accion("metrica.ver", "Ver el consumo del modelo (tokens y costo)", MODULO_METRICA),
 )
 
 # Acceso por nombre en el código: ACCION.HISTORIA_APROBAR == "historia.aprobar".

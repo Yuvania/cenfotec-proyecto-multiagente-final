@@ -96,6 +96,7 @@ Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 
 - **Persistencia y reanudación:** cada pausa del flujo guarda un punto de control en la base de datos; se puede retomar otro día o tras un reinicio del servidor.
 - **Observabilidad:** trazas por turno y por etapa (Langfuse) y registros estructurados sin contenido del modelo ni datos personales.
+- **Métricas de consumo:** `OpenCodeClient` registra los tokens y el costo de cada respuesta; `WorkflowRuntime` abre un contexto (flujo, HU, creación o cambio) que heredan todos los agentes, así que un agente nuevo queda medido sin escribir nada. Tabla `consumo_modelo`, pantalla Mantenimiento › Métricas › Consumo del modelo y generaciones en Langfuse. Ver `docs/metricas.md`.
 - **Seguridad:** inicio de sesión por usuario; usuarios con roles y roles con acciones (pestaña Mantenimiento), validados en cada ruta de la API; agentes sin permisos en OpenCode, herramientas MCP de solo lectura por rol, entradas tratadas como no confiables y aprobación siempre humana.
 - **Configuración por entorno:** claves y URLs por variables de entorno; despliegue en contenedor (ver `DESPLIEGUE.md`).
 - **Diseño:** marca «Ciruela corporativa» documentada en `docs/marca.md`; colores solo como variables de tema, dos familias tipográficas y una estructura que se adapta a web, tablet y móvil. Pruebas de estructura la protegen.

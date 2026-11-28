@@ -119,6 +119,12 @@ export const PREGUNTAS_AYUDA = [
     ],
   },
   {
+    id: 'consumo',
+    pregunta: '¿Cuánto cuesta crear una historia?',
+    texto:
+      'Cada respuesta del modelo guarda sus tokens y su costo, asociados a la historia y al agente. En Mantenimiento › Métricas › Consumo del modelo se ve el costo promedio por historia creada y por cambio, por agente y por día; en el detalle de una historia, la pestaña «Consumo del modelo» muestra lo que costó esa historia. Hace falta la acción «Ver el consumo del modelo».',
+  },
+  {
     id: 'pendientes',
     pregunta: '¿Dónde veo lo que tengo por aprobar?',
     texto:

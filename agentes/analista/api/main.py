@@ -17,6 +17,7 @@ from agentes.analista.api.routes.repositorio import router as repositorio_router
 from agentes.analista.api.routes.seguridad import router as seguridad_router
 from agentes.analista.api.routes.pendientes import router as pendientes_router
 from agentes.analista.api.routes.pruebas import router as pruebas_router
+from agentes.analista.api.routes.metricas import router as metricas_router
 from agentes.notificaciones.teams_service import TeamsService
 from agentes.analista.api.routes.workflows import router as workflows_router
 from agentes.analista.core.conversation_store import ConversationStore
@@ -29,6 +30,9 @@ from agentes.analista.core.workflow_graph import WorkflowRuntime
 from agentes.analista.memory.repositorio import RepositorioHU
 from agentes.conocimiento.sincronizacion import SincronizadorConocimiento
 from agentes.pruebas.pruebas_service import PruebasService
+from agentes.metricas.metricas_service import MetricasService
+from agentes.metricas.registro_consumo import agregar_registrador, quitar_registrador
+from agentes.metricas.repositorio_consumo import RepositorioConsumo
 from agentes.pruebas.repositorio_pruebas import RepositorioPrueba
 from agentes.seguridad.clave import FirmaSesion
 from agentes.seguridad.repositorio_seguridad import RepositorioSeguridad
@@ -59,6 +63,12 @@ async def lifespan(app: FastAPI):
         app.state.firma_sesion = FirmaSesion(os.environ.get("SESION_SECRETO", "").strip() or credenciales[1])
     # Pruebas automatizadas: corren en GitHub Actions; aquí solo se piden, se siguen y se guarda el resumen.
     app.state.pruebas = PruebasService(RepositorioPrueba(app.state.repositorio.motor))
+    # Métricas: cada respuesta del modelo se guarda con sus tokens y su costo, asociada a su historia y agente.
+    app.state.metricas = MetricasService(
+        RepositorioConsumo(app.state.repositorio.motor), observability=app.state.observability,
+        consumo_prueba=app.state.pruebas.consumo_desde,
+    )
+    agregar_registrador(app.state.metricas.registrar)
     # Repositorio del Asesor y carga del conocimiento en Pinecone, en segundo plano y sin pasos manuales.
     app.state.sincronizador = SincronizadorConocimiento(repositorio=app.state.repositorio)
     app.state.repositorio.al_cambiar_conocimiento = app.state.sincronizador.programar_repositorio
@@ -81,6 +91,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        quitar_registrador(app.state.metricas.registrar)
         await app.state.store.stop_cleanup()
         await app.state.observability.shutdown()
 
@@ -101,6 +112,7 @@ app.include_router(historias_router, prefix="/api/analista", tags=["historias"])
 app.include_router(seguridad_router, prefix="/api/analista", tags=["seguridad"])
 app.include_router(pendientes_router, prefix="/api/analista", tags=["pendientes"])
 app.include_router(pruebas_router, prefix="/api/analista", tags=["pruebas"])
+app.include_router(metricas_router, prefix="/api/analista", tags=["metricas"])
 app.include_router(workflows_router, prefix="/api/workflows", tags=["workflows"])
 
 # Publicación en un hosting: la interfaz la sirve el mismo servicio. La API pide sesión por usuario
