@@ -52,7 +52,7 @@ describe('chat de ayuda sin modelo', () => {
 });
 
 describe('página de Ayuda', () => {
-  it('explica el asistente, las acciones, el agente, las tecnologías, lo pendiente y el equipo', async () => {
+  it('explica el asistente, las acciones, la arquitectura (con agentes y tecnologías), lo pendiente y el equipo', async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><AyudaComponent /></MemoryRouter>);
     expect(screen.getByText('¿Cómo funciona el Asistente IA?')).toBeInTheDocument();
@@ -64,25 +64,52 @@ describe('página de Ayuda', () => {
       expect(screen.getByRole('heading', { name: titulo })).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('tab', { name: /Los agentes/ }));
-    ['Agente Analista', 'Asesor Técnico', 'Redactor-Revisor', 'Gestor de Cambios', 'Autonomía', 'Herramientas (MCP)', 'Memoria (RAG)', 'Qué no hacen'].forEach((titulo) => {
-      expect(screen.getByRole('heading', { name: titulo })).toBeInTheDocument();
-    });
-
     await user.click(screen.getByRole('tab', { name: /Ejemplo de HU generada/ }));
     expect(screen.getByRole('img', { name: /historia de usuario generada/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: /Tecnologías/ }));
-    expect(within(screen.getByRole('tabpanel')).getByText(/FastAPI/)).toBeInTheDocument();
-    ['Orquestación de agentes', 'Herramientas (MCP)', 'Conocimiento (RAG)', 'Repositorio de código', 'Trazabilidad'].forEach((titulo) => {
-      expect(screen.getByRole('heading', { name: titulo })).toBeInTheDocument();
-    });
-
+    // Arquitectura reúne cómo funciona, los agentes, las tecnologías, la construcción y el diseño.
     await user.click(screen.getByRole('tab', { name: /Arquitectura/ }));
-    ['Cómo está construido', 'Capas del sistema', 'Cómo se hace un cambio', 'Pensado para producción', 'Preparado para programar con IA'].forEach((titulo) => {
-      expect(within(screen.getByRole('tabpanel')).getByText(titulo)).toBeInTheDocument();
+    const panel = screen.getByRole('tabpanel');
+    const indice = within(panel).getByRole('navigation', { name: 'Contenido de Arquitectura' });
+    expect(within(indice).getAllByRole('link').map((enlace) => enlace.textContent))
+      .toEqual(['Cómo funciona', 'Los agentes', 'Tecnologías', 'Cómo está construido', 'Diseño']);
+
+    const menu = within(panel).getByText('Qué hace cada opción del menú').closest('.card');
+    ['Inicio', 'Notificaciones', 'Historias de usuario', 'Mantenimiento', 'Ayuda'].forEach((opcion) => {
+      expect(within(menu).getByRole('heading', { name: opcion })).toBeInTheDocument();
     });
-    expect(screen.getByRole('heading', { name: 'Agregar un agente' })).toBeInTheDocument();
+    expect(within(menu).getByText(/Cambio por decidir/)).toBeInTheDocument();
+    expect(within(menu).getByText(/Calidad › Pruebas automatizadas/)).toBeInTheDocument();
+
+    const consulta = within(panel).getByText('Cómo viaja una consulta entre los agentes').closest('.card');
+    ['Agente y su MCP', 'Pinecone', 'OpenCode'].forEach((quien) => {
+      expect(within(consulta).getByText(quien)).toBeInTheDocument();
+    });
+    expect(within(consulta).getAllByText('LangGraph')).toHaveLength(2);
+    expect(within(consulta).getByText(/índice historias-usuario/)).toBeInTheDocument();
+
+    const pruebas = within(panel).getByText('Cómo funcionan las pruebas automatizadas').closest('.card');
+    ['Conexión con GitHub', 'GitHub Actions', 'Playwright', 'Playwright MCP y Agente de Pruebas'].forEach((quien) => {
+      expect(within(pruebas).getByText(quien)).toBeInTheDocument();
+    });
+    expect(within(pruebas).getByText(/Todo se ejecuta en GitHub/)).toBeInTheDocument();
+
+    ['Agente Analista', 'Asesor Técnico', 'Redactor-Revisor', 'Gestor de Cambios', 'Agente de Pruebas', 'Autonomía', 'Memoria (RAG)', 'Qué no hacen'].forEach((titulo) => {
+      expect(within(panel).getByRole('heading', { name: titulo })).toBeInTheDocument();
+    });
+    expect(within(panel).getByText(/Python 3.12, FastAPI con Uvicorn/)).toBeInTheDocument();
+    ['Orquestación de agentes', 'Conocimiento (RAG)', 'Repositorio de código', 'Trazabilidad'].forEach((titulo) => {
+      expect(within(panel).getByRole('heading', { name: titulo })).toBeInTheDocument();
+    });
+    ['Capas del sistema', 'Cómo se hace un cambio', 'Pensado para producción', 'Preparado para programar con IA', 'Paleta de colores'].forEach((titulo) => {
+      expect(within(panel).getByText(titulo)).toBeInTheDocument();
+    });
+    expect(within(panel).getByRole('heading', { name: 'Agregar un agente' })).toBeInTheDocument();
+
+    // Agentes y Tecnologías ya no son pestañas aparte.
+    expect(screen.queryByRole('tab', { name: /Los agentes/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Tecnologías/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(7);
 
     await user.click(screen.getByRole('tab', { name: /Por definir/ }));
     expect(screen.getByRole('heading', { name: 'Bitácora de seguridad' })).toBeInTheDocument();

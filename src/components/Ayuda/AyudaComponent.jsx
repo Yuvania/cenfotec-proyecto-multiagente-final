@@ -2,14 +2,14 @@ import React from 'react';
 import { TituloPaginaComponent } from '../Comun/TituloPaginaComponent';
 import { SeccionesConPestanasComponent } from '../HistoriaUsuario/detalle/SeccionesConPestanasComponent';
 import { TarjetaItemsAyudaComponent } from './TarjetaItemsAyudaComponent';
-import { AgenteAyudaComponent } from './AgenteAyudaComponent';
 import { EjemploHuAyudaComponent } from './EjemploHuAyudaComponent';
 import { EquipoAyudaComponent } from './EquipoAyudaComponent';
 import { ArquitecturaAyudaComponent } from './ArquitecturaAyudaComponent';
 import {
-  ACCIONES_HISTORIA, NAVEGACION_ASISTENTE, PASOS_ASISTENTE, PENDIENTES, PRUEBAS_AUTOMATIZADAS, TECNOLOGIAS,
+  ACCIONES_HISTORIA, NAVEGACION_ASISTENTE, PASOS_ASISTENTE, PENDIENTES, PRUEBAS_AUTOMATIZADAS,
 } from '../../data/ayudaDocumentacion';
 
+// Arquitectura reúne cómo funciona, los agentes, las tecnologías, la construcción y el diseño.
 const SECCIONES = [
   {
     id: 'asistente',
@@ -38,13 +38,7 @@ const SECCIONES = [
       />
     ),
   },
-  { id: 'agente', titulo: 'Los agentes', contenido: <AgenteAyudaComponent /> },
   { id: 'ejemplo', titulo: 'Ejemplo de HU generada', contenido: <EjemploHuAyudaComponent /> },
-  {
-    id: 'tecnologias',
-    titulo: 'Tecnologías',
-    contenido: <TarjetaItemsAyudaComponent title="Con qué está hecha la aplicación" items={TECNOLOGIAS} />,
-  },
   { id: 'arquitectura', titulo: 'Arquitectura', contenido: <ArquitecturaAyudaComponent /> },
   {
     id: 'pruebas',

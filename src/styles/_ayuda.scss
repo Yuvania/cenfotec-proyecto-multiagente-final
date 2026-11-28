@@ -71,3 +71,100 @@
   &__valor { font-size: 0.75rem; color: var(--color-text-muted); }
   &__uso { font-size: 0.8rem; color: var(--color-text-secondary); margin-top: 0.15rem; }
 }
+
+// Arquitectura: índice de grupos y títulos de grupo.
+.ayuda-indice {
+  margin-bottom: 1.25rem;
+
+  &__lista {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__enlace {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--color-primary-border);
+    border-radius: 999px;
+    background: var(--color-primary-light);
+    color: var(--color-primary-text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover { color: var(--color-primary-text-hover); border-color: var(--color-primary); }
+    &:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  }
+}
+
+.ayuda-grupo {
+  scroll-margin-top: 1rem;
+
+  & + & { margin-top: 2rem; }
+
+  &__titulo {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+}
+
+// Recorrido paso a paso (Arquitectura › Cómo funciona): número, pieza que actúa y qué hace, unidos por una línea.
+.ayuda-flujo {
+  list-style: none;
+  margin-top: 0.5rem;
+
+  &__paso {
+    position: relative;
+    display: flex;
+    gap: 0.85rem;
+    padding-bottom: 1rem;
+
+    // Línea que une un paso con el siguiente.
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 32px;
+      bottom: 0;
+      width: 2px;
+      background: var(--color-primary-border);
+    }
+  }
+
+  &__numero {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  &__cuerpo { padding-top: 0.25rem; }
+
+  &__quien {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary-text);
+    margin-bottom: 0.15rem;
+  }
+
+  &__nota {
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+}

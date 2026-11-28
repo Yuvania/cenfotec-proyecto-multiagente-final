@@ -95,6 +95,30 @@ export const PREGUNTAS_AYUDA = [
       'Por capas (interfaz, API, orquestación, agentes, herramientas y datos) y con registros: cada agente es una carpeta con su definición, y las pantallas salen de un registro único. Así, agregar un agente o una pantalla se hace en un solo lugar. El detalle está en Ayuda → Arquitectura.',
   },
   {
+    id: 'funcionamiento',
+    pregunta: '¿Cómo trabajan los agentes por dentro?',
+    texto: 'Cada uno de los 4 agentes tiene su propio servidor MCP. En pocas palabras:',
+    pasos: [
+      'La aplicación envía el requerimiento y LangGraph decide qué agente actúa.',
+      'El agente se conecta a su MCP: las herramientas le dicen qué busca cada una y en qué espacio de Pinecone.',
+      'El MCP busca en Pinecone (glosario, estándares, checklist, HU aprobadas, lecciones o código) y devuelve los resultados.',
+      'El agente se los pasa a OpenCode, que con el modelo escribe la respuesta.',
+      'LangGraph pasa el resultado al siguiente agente y, al final, regresa a la aplicación.',
+    ],
+  },
+  {
+    id: 'pruebas',
+    pregunta: '¿Cómo funcionan las pruebas automatizadas?',
+    texto: 'Se ordenan desde la aplicación, pero todo corre en GitHub:',
+    pasos: [
+      'En Mantenimiento › Pruebas automatizadas elige qué probar y presiona Ejecutar pruebas.',
+      'La aplicación se conecta a GitHub con un token y arranca las pruebas.',
+      'GitHub levanta la aplicación con Docker y Playwright la recorre en web, tablet y móvil.',
+      'Si algo falla, el Agente de Pruebas lo revisa con un navegador por Playwright MCP y explica por qué.',
+      'El tablero muestra el resultado; las evidencias quedan en GitHub. El detalle está en Ayuda → Arquitectura.',
+    ],
+  },
+  {
     id: 'pendientes',
     pregunta: '¿Dónde veo lo que tengo por aprobar?',
     texto:

@@ -144,17 +144,113 @@ export const LIMITE_AGENTE = [
 
 export const MEMORIA_AGENTE = 'Aprenden de las HU aprobadas (Repositorio de HU) y de las lecciones que el Product Owner aprueba. Al aprobar o eliminar una HU, el conocimiento en Pinecone se actualiza solo.';
 
+// --- Arquitectura › Cómo funciona: dos recorridos explicados paso a paso -----------------------------
+// Cada paso: { quien, texto }. «quien» es la pieza que actúa en ese momento.
+export const FLUJO_CONSULTA = [
+  { quien: 'Aplicación', texto: 'Usted escribe el requerimiento y lo envía. La aplicación se lo pasa a la API.' },
+  { quien: 'LangGraph', texto: 'Decide qué agente actúa (primero el Analista) y le entrega el caso.' },
+  {
+    quien: 'Agente y su MCP',
+    texto: 'El agente se conecta a su propio servidor MCP. Cada herramienta trae sus instrucciones: qué busca y en qué espacio de Pinecone. Con eso el agente arma su plan: qué buscar y dónde.',
+  },
+  {
+    quien: 'Pinecone',
+    texto: 'El conocimiento está en el índice historias-usuario, dividido en 6 espacios: glosario, estándares, checklist, HU aprobadas, lecciones aprendidas y código. El MCP busca solo en los espacios de su agente y le devuelve los resultados.',
+  },
+  {
+    quien: 'OpenCode',
+    texto: 'El agente junta todo (el caso y los resultados) y se lo pasa a OpenCode, que con el modelo de lenguaje escribe la respuesta: las preguntas, el impacto o la historia.',
+  },
+  {
+    quien: 'LangGraph',
+    texto: 'Pasa el resultado de agente a agente (Analista → Asesor Técnico → Redactor-Revisor) y se detiene cuando le toca a una persona: Negocio responde y el Product Owner aprueba.',
+  },
+  { quien: 'Aplicación', texto: 'El resultado regresa a la aplicación y se muestra en pantalla.' },
+];
+
+export const NOTA_FLUJO_CONSULTA = [
+  'Son 4 agentes y 4 servidores MCP, uno por agente. Cada MCP solo tiene las herramientas de su agente: el Analista consulta glosario, HU aprobadas, estándares y checklist; el Asesor Técnico, código, estándares y HU aprobadas; el Redactor-Revisor, estándares, checklist y HU aprobadas; y el Gestor de Cambios, HU aprobadas, lecciones y checklist.',
+  'El Gestor de Cambios sigue el mismo recorrido cuando llega una solicitud de cambio sobre una HU aprobada.',
+  'Langfuse registra cada paso, para saber qué hizo cada agente y dónde se detuvo.',
+];
+
+export const FLUJO_PRUEBAS = [
+  { quien: 'Aplicación', texto: 'En Mantenimiento › Pruebas automatizadas elige la opción del menú y qué probar, y presiona Ejecutar pruebas.' },
+  { quien: 'Conexión con GitHub', texto: 'El backend se conecta a GitHub con el token y arranca el workflow de pruebas.' },
+  { quien: 'GitHub Actions', texto: 'En una máquina de GitHub se levanta la aplicación con Docker (la misma imagen de Render), con la API simulada.' },
+  {
+    quien: 'Playwright',
+    texto: 'Abre un navegador real y recorre las pantallas como una persona, en web, tablet y móvil. De cada fallo guarda captura, video y traza.',
+  },
+  {
+    quien: 'Playwright MCP y Agente de Pruebas',
+    texto: 'Si un caso falla, se levanta un navegador con Playwright MCP. El MCP le da al Agente de Pruebas herramientas para navegar y leer la página, la consola y la API; el agente revisa y explica por qué falló.',
+  },
+  {
+    quien: 'Aplicación',
+    texto: 'GitHub publica el resumen; el tablero lo lee y muestra cada caso con su resultado y su diagnóstico. Las evidencias quedan en GitHub.',
+  },
+];
+
+export const NOTA_FLUJO_PRUEBAS = [
+  'La aplicación no corre las pruebas: solo las ordena y muestra el resultado. Todo se ejecuta en GitHub, así no le quita memoria a la aplicación en vivo.',
+  'Playwright corre los casos escritos en la carpeta e2e. Playwright MCP es otra cosa: el navegador que usa el Agente de Pruebas para investigar un fallo.',
+];
+
+// --- Arquitectura › Cómo funciona: qué hace cada opción del menú, en simple -------------------------
+export const OPCION_MENU = [
+  {
+    titulo: 'Inicio',
+    texto: 'Un resumen de las historias: cuántas están aprobadas, en análisis o esperando respuesta de Negocio, y un aviso cuando algo espera su decisión.',
+  },
+  {
+    titulo: 'Notificaciones',
+    texto: 'Aquí llegan los avisos, en una sola lista. Cada uno lleva su categoría y se puede filtrar:',
+    puntos: [
+      'Por aprobar: una historia espera la aprobación del Product Owner.',
+      'Cambio por decidir: llegó una solicitud de cambio sobre una HU aprobada.',
+      'Devuelta: el Product Owner la devolvió con un motivo; quien la creó la retoma.',
+      'Rechazada o Aprobada: avisos de cómo terminó una historia.',
+      'Los que piden una decisión van primero; los demás se marcan como leídos.',
+    ],
+  },
+  {
+    titulo: 'Historias de usuario',
+    texto: 'Todo lo de las historias, desde el listado:',
+    puntos: [
+      'Ver el listado y las que están en proceso, para retomarlas o descartarlas.',
+      'Crear una historia nueva con el asistente de los agentes.',
+      'Ver el detalle, editar y solicitar un cambio sobre una HU aprobada.',
+      'Descargar en Word o PDF y eliminar.',
+    ],
+  },
+  {
+    titulo: 'Mantenimiento',
+    texto: 'Lo que administra el sistema, en dos secciones:',
+    puntos: [
+      'Seguridad › Usuarios: a cada persona se le asignan sus roles.',
+      'Seguridad › Roles y acciones: a cada rol se le marcan sus acciones, por ejemplo Aprobar historia.',
+      'Calidad › Pruebas automatizadas: ejecutar las pruebas y ver los resultados con el diagnóstico del Agente de Pruebas.',
+    ],
+  },
+  {
+    titulo: 'Ayuda',
+    texto: 'Esta guía y, abajo a la derecha, el chat «¿Cómo se usa?» con las preguntas frecuentes.',
+  },
+];
+
+// --- Arquitectura › Tecnologías -----------------------------------------------------------------------
 export const TECNOLOGIAS = [
-  { titulo: 'Interfaz', texto: 'React 18, Vite 5, React Router 6, Sass, lucide-react (íconos), react-markdown con remark-gfm.' },
+  { titulo: 'Interfaz', texto: 'React 18, Vite 5, React Router 6, Sass, lucide-react (íconos) y react-markdown con remark-gfm. Las rutas y el menú salen de un solo registro: src/config/rutas.jsx.' },
   { titulo: 'Documentos', texto: 'docx (archivos Word) y jsPDF con jspdf-autotable (archivos PDF), con una plantilla de documento configurable.' },
-  { titulo: 'Backend', texto: 'Python 3.12, FastAPI con Uvicorn, Pydantic, httpx y SQLAlchemy con PyMySQL.' },
-  { titulo: 'Orquestación de agentes', texto: 'LangGraph: un grafo con los pasos del flujo, pausas para las decisiones de las personas y puntos de control que se guardan en la base de datos para retomar el flujo.' },
+  { titulo: 'Backend', texto: 'Python 3.12, FastAPI con Uvicorn, Pydantic y httpx. Valida los datos y cada ruta declara qué acción necesita la persona.' },
+  { titulo: 'Orquestación de agentes', texto: 'LangGraph: el flujo es una tabla de pasos (workflow_graph.py), con pausas para las decisiones de las personas y puntos de control que se guardan en la base de datos para retomarlo otro día.' },
   { titulo: 'Modelo de lenguaje', texto: 'OpenCode Server 2.1.2 como interfaz con el modelo, sin permisos para usar herramientas propias. Proveedor OpenCode Go con el modelo glm-5.3-flash (configurables). LangChain para las plantillas de los prompts y la validación de las salidas.' },
-  { titulo: 'Herramientas (MCP)', texto: 'FastMCP: un servidor MCP por agente, con herramientas de solo lectura, conectado con el adaptador MCP de LangChain.' },
-  { titulo: 'Conocimiento (RAG)', texto: 'Pinecone con el modelo de embeddings multilingual-e5-large (1024 dimensiones) en 6 espacios: glosario, estándares, checklist, HU aprobadas, lecciones y código. Se carga solo al arrancar y al aprobar una HU; si Pinecone no responde, se usa una copia local.' },
+  { titulo: 'Herramientas (MCP)', texto: 'FastMCP: un servidor MCP por agente, con herramientas de solo lectura, conectado con el adaptador MCP de LangChain. El Agente de Pruebas usa además Playwright MCP, limitado a la aplicación de prueba.' },
+  { titulo: 'Conocimiento (RAG)', texto: 'Pinecone, índice historias-usuario, con el modelo de embeddings multilingual-e5-large (1024 dimensiones) en 6 espacios: glosario, estándares, checklist, HU aprobadas, lecciones y código. Se carga solo al arrancar y al aprobar una HU; si Pinecone no responde, se usa una copia local.' },
   { titulo: 'Repositorio de código', texto: 'Un repositorio de GitHub de solo lectura (de ejemplo, codigo-ejemplo-polizas) que el Asesor Técnico revisa. Se copia al arrancar el servicio.' },
-  { titulo: 'Datos', texto: 'TiDB Cloud (compatible con MySQL) como base compartida: historias, Repositorio de HU, cambios, lecciones y los flujos en proceso. En local y en pruebas, SQLite.' },
-  { titulo: 'Trazabilidad', texto: 'Langfuse para seguir cada paso de los agentes, y registros del servidor que indican la causa cuando un flujo se detiene.' },
+  { titulo: 'Datos', texto: 'TiDB Cloud (compatible con MySQL) con SQLAlchemy y PyMySQL: historias, Repositorio de HU, cambios, lecciones, flujos en proceso, usuarios, roles y avisos. En local y en pruebas, SQLite.' },
+  { titulo: 'Trazabilidad', texto: 'Langfuse para seguir cada paso de los agentes, y registros del servidor que indican la causa cuando un flujo se detiene, sin guardar lo que generó el modelo.' },
   { titulo: 'Pruebas', texto: 'Vitest y Testing Library en la interfaz; pytest y pytest-asyncio en el backend; Playwright de punta a punta en web, tablet y móvil. GitHub Actions las ejecuta en cada cambio y, a pedido, desde Mantenimiento › Pruebas automatizadas.' },
   { titulo: 'Despliegue', texto: 'Docker en una sola imagen (interfaz compilada, backend y OpenCode), publicada en Render con despliegue automático desde la rama main. Con docker compose la misma imagen corre en cualquier computadora.' },
 ];
@@ -186,27 +282,12 @@ export const PENDIENTES = [
   },
 ];
 
-// Orden alfabético por nombre.
-// Arquitectura: cómo está organizado el sistema y por qué, aunque sea un prototipo, está pensado para crecer.
 // --- Arquitectura: para ponerse al día rápido -------------------------------------------------
 export const RESUMEN_ARQUITECTURA = [
   'Un equipo de agentes de IA convierte un requerimiento de Negocio en una historia de usuario lista para grooming. Las personas responden y deciden; ningún agente aprueba.',
   'Flujo: requerimiento → el Analista y el Asesor Técnico arman juntos una sola ronda de preguntas → Negocio responde → el Redactor escribe y el Revisor valida → el Product Owner aprueba, devuelve o rechaza → la HU queda en el Repositorio de HU.',
   'El Product Owner ve en Notificaciones lo que espera su aprobación; quien creó la historia ve ahí si fue aprobada, devuelta o rechazada. Cada notificación lleva su categoría y se puede filtrar.',
   'Antes de cambiar algo: docs/arquitectura.md, docs/marca.md y las skills de .agents/skills. Las pruebas de estructura fallan si se rompe la estructura o el diseño.',
-];
-
-export const STACK_ARQUITECTURA = [
-  { titulo: 'Interfaz: React 18 + Vite', texto: 'Pantallas por funcionalidad. Rutas y menú salen de src/config/rutas.jsx; el asistente separa su controlador (useCrearHistoria) de las vistas de cada paso.' },
-  { titulo: 'API: FastAPI (Python 3.12)', texto: 'Valida los datos y expone el estado del flujo. Cada ruta declara qué acción necesita la persona (inicio de sesión por usuario, roles y acciones en Mantenimiento).' },
-  { titulo: 'Orquestación: LangGraph', texto: 'El flujo es un StateGraph declarado como tabla de pasos (workflow_graph.py). Las pausas humanas usan interrupt y se retoman con Command(resume); cada pausa se guarda en la base de datos para seguir otro día.' },
-  { titulo: 'Agentes: OpenCode Server', texto: 'Cuatro agentes en el flujo de HU (Analista, Asesor Técnico, Redactor-Revisor y Gestor de Cambios) y el Agente de Pruebas, que diagnostica las pruebas que fallan. Cada uno es una carpeta en agentes/equipo/<id> con su definición, sus instrucciones versionadas, su servidor MCP y su servicio; se registran solos.' },
-  { titulo: 'Herramientas: MCP (FastMCP)', texto: 'Un servidor por agente, solo con herramientas de lectura. Cada agente consulta únicamente sus fuentes de conocimiento.' },
-  { titulo: 'Conocimiento: Pinecone', texto: 'Índice con las HU aprobadas, las lecciones aprendidas y el código del repositorio de pruebas. Se vuelve a cargar solo cuando algo cambia.' },
-  { titulo: 'Datos: TiDB (MySQL) con SQLAlchemy', texto: 'Historias, Repositorio de HU, cambios, lecciones, flujos en proceso, usuarios, roles y avisos. En local y en pruebas se usa SQLite.' },
-  { titulo: 'Trazabilidad: Langfuse', texto: 'Traza cada turno y cada etapa de los agentes. Los registros del servidor dicen la causa de un fallo sin guardar lo que generó el modelo.' },
-  { titulo: 'Despliegue: Docker en Render', texto: 'Una sola imagen con la interfaz compilada, el backend y OpenCode. Se despliega solo con cada cambio en la rama main. docker-compose.yml levanta la misma imagen en cualquier computadora.' },
-  { titulo: 'Pruebas: Playwright en GitHub Actions', texto: 'Mantenimiento › Pruebas automatizadas arranca el workflow pruebas-e2e.yml con un token de GitHub; ahí se levanta la aplicación en Docker y Playwright la recorre en web, tablet y móvil. El tablero sigue el avance y guarda el resumen; las evidencias quedan en GitHub.' },
 ];
 
 // --- Pruebas automatizadas (Mantenimiento › Calidad › Pruebas automatizadas) ----------------------
@@ -336,4 +417,5 @@ export const IA_ARQUITECTURA = [
   'La guía completa está en docs/arquitectura.md.',
 ];
 
+// Orden alfabético por nombre.
 export const EQUIPO = ['Allam Fernandez', 'Gilberth Monge', 'Yuvania Castillo'];

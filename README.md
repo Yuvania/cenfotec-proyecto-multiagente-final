@@ -30,7 +30,7 @@ Proyecto desarrollado para el curso de Inteligencia Artificial de Cenfotec. El d
 - **Notificaciones:** una sola lista con la categoría de cada notificación (Por aprobar, Cambio por decidir, Devuelta, Rechazada, Aprobada) y filtros. El Product Owner ve lo que espera su aprobación; quien creó la historia ve si fue aprobada, devuelta con su motivo o rechazada. El aviso por Teams está preparado pero apagado hasta configurarlo (ver DESPLIEGUE.md).
 - **Menú con propósito:** Inicio, Notificaciones, Historias de usuario (con «Nueva historia» en el listado), Mantenimiento (*Seguridad*: Usuarios, Roles y acciones; *Calidad*: Pruebas automatizadas) y Ayuda. En móvil: Inicio, Avisos, Historias y «Más».
 - **Pruebas automatizadas:** en Mantenimiento › Calidad, para ejecutar las pruebas de Playwright (web, tablet y móvil) en GitHub Actions y ver sus resultados, con evidencias en GitHub.
-- **Ayuda integrada** con el flujo, los agentes, las tecnologías y los temas pendientes de definición.
+- **Ayuda integrada** con el flujo, la arquitectura (qué hace cada opción del menú, cómo viaja una consulta entre los agentes, cómo corren las pruebas, los agentes y las tecnologías) y los temas pendientes de definición.
 
 ## Flujo de creación de una historia
 
