@@ -141,7 +141,7 @@ aviso = Table(
     "aviso", _metadata,
     Column("id", _GUID, primary_key=True),
     Column("usuario_id", String(60), nullable=False),  # destinatario (id del usuario de la sesión)
-    Column("tipo", String(20), nullable=False),  # aprobada | devuelta | rechazada
+    Column("tipo", String(20), nullable=False),  # aprobada | devuelta | rechazada | fallo (falló un agente)
     Column("workflow_id", _GUID),
     Column("titulo", String(200), nullable=False),
     Column("detalle", _Largo),
@@ -355,6 +355,20 @@ class RepositorioHU:
                 id=nuevo_guid(), usuario_id=usuario_id[:60], tipo=tipo[:20], workflow_id=workflow_id,
                 titulo=(titulo or "Sin título")[:200], detalle=(detalle or None), autor=(autor or None) and autor[:120],
                 creado_en=_now()))
+
+    def hay_aviso_sin_leer(self, *, usuario_id: str, tipo: str, workflow_id: str) -> bool:
+        consulta = select(aviso.c.id).where(
+            aviso.c.usuario_id == usuario_id, aviso.c.tipo == tipo, aviso.c.workflow_id == workflow_id,
+            aviso.c.leido_en.is_(None)).limit(1)
+        with self.motor.connect() as conexion:
+            return conexion.execute(consulta).first() is not None
+
+    def cerrar_aviso_flujo(self, *, workflow_id: str, tipo: str) -> None:
+        """Marca como leídos los avisos de ese tipo del flujo (por ejemplo, el fallo, cuando el flujo vuelve a andar)."""
+        with self.motor.begin() as conexion:
+            conexion.execute(update(aviso).where(
+                aviso.c.workflow_id == workflow_id, aviso.c.tipo == tipo, aviso.c.leido_en.is_(None),
+            ).values(leido_en=_now()))
 
     def listar_aviso(self, usuario_id: str, limite: int = 30) -> list[dict[str, Any]]:
         """Últimos avisos de la persona: primero los sin leer y, dentro de cada grupo, del más reciente al más antiguo."""

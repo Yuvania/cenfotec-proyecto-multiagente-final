@@ -34,8 +34,8 @@ def _error(exc: ErrorPrueba) -> WorkflowApiError:
 
 
 @router.get("/pruebas/configuracion", dependencies=[requiere_accion(ACCION.PRUEBA_VER)])
-def leer_configuracion(request: Request) -> dict[str, Any]:
-    return _servicio(request).configuracion()
+async def leer_configuracion(request: Request) -> dict[str, Any]:
+    return await _servicio(request).configuracion_con_token()
 
 
 @router.get("/pruebas/ejecuciones", dependencies=[requiere_accion(ACCION.PRUEBA_VER)])

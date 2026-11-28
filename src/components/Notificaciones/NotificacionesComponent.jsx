@@ -12,7 +12,12 @@ export const CATEGORIA = Object.freeze({
   devuelta: { texto: 'Devuelta', clase: 'advertencia', accion: false },
   rechazada: { texto: 'Rechazada', clase: 'peligro', accion: false },
   aprobada: { texto: 'Aprobada', clase: 'exito', accion: false },
+  // Un agente no pudo terminar después de los reintentos automáticos: se retoma desde aquí.
+  fallo: { texto: 'Falló un agente', clase: 'peligro', accion: false },
 });
+
+// Los avisos que se retoman desde la notificación: la historia devuelta y la que se detuvo por un fallo.
+const CATEGORIA_RETOMAR = Object.freeze(['devuelta', 'fallo']);
 
 const FILTRO_TODAS = 'todas';
 const FILTRO_ACCION = 'accion';
@@ -47,7 +52,8 @@ export const unirNotificaciones = (porDecidir = [], avisos = []) => {
     avisoId: aviso.id,
     categoria: CATEGORIA[aviso.tipo] ? aviso.tipo : 'devuelta',
     titulo: aviso.titulo,
-    detalle: aviso.detalle ? `Motivo: ${aviso.detalle}` : (aviso.tipo === 'aprobada' ? `${aviso.autor || 'El Product Owner'} la aprobó.` : ''),
+    detalle: aviso.tipo === 'fallo' ? (aviso.detalle || 'Un agente no pudo terminar. El avance quedó guardado.')
+      : aviso.detalle ? `Motivo: ${aviso.detalle}` : (aviso.tipo === 'aprobada' ? `${aviso.autor || 'El Product Owner'} la aprobó.` : ''),
     autor: aviso.autor,
     fecha: aviso.creado_en,
     leido: Boolean(aviso.leido),
@@ -126,7 +132,7 @@ export const NotificacionesComponent = () => {
                         {item.categoria === 'por_aprobar' ? 'Revisar y decidir' : 'Revisar'}
                       </BotonComponent>
                     )}
-                    {item.categoria === 'devuelta' && item.workflowId && (
+                    {CATEGORIA_RETOMAR.includes(item.categoria) && item.workflowId && (
                       <BotonComponent variant="secondary" size="sm" onClick={() => abrir(item.workflowId)}>Retomar</BotonComponent>
                     )}
                     {!item.requiereAccion && !item.leido && (

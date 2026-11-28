@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { PruebasComponent } from '../PruebasComponent';
+import { AvisoTokenComponent, PruebasComponent } from '../PruebasComponent';
 import { pruebasApi } from '../../../services/pruebasApi';
 import { casosAprobados, duracion, numeroEjecucion } from '../../../utils/formatoPruebas';
 
@@ -69,5 +69,15 @@ describe('tablero de pruebas automatizadas', () => {
     expect(screen.queryByRole('option', { name: 'Todo (regresión)' })).not.toBeInTheDocument();
     await usuario.click(screen.getByRole('button', { name: 'Ejecutar pruebas' }));
     await waitFor(() => expect(pruebasApi.ejecutar).toHaveBeenCalledWith({ alcance: 'basicas', ambiente: 'produccion', navegador: 'chromium' }));
+  });
+
+  it('avisa cuando el token de GitHub vence pronto o ya venció', () => {
+    const { rerender } = render(<AvisoTokenComponent token={{ informado: true, vence_en: '2030-03-01T12:00:00+00:00', dias: 9, por_vencer: true }} />);
+    expect(screen.getByText('El token de GitHub vence pronto')).toBeInTheDocument();
+    expect(screen.getByText(/en 9 días/)).toBeInTheDocument();
+    rerender(<AvisoTokenComponent token={{ informado: true, vence_en: '2030-03-01T12:00:00+00:00', dias: -2, por_vencer: true }} />);
+    expect(screen.getByText('El token de GitHub venció')).toBeInTheDocument();
+    rerender(<AvisoTokenComponent token={{ informado: false, vence_en: null, dias: null, por_vencer: false }} />);
+    expect(screen.getByText(/no informa fecha de vencimiento/)).toBeInTheDocument();
   });
 });

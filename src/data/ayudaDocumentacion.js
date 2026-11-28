@@ -172,6 +172,8 @@ export const NOTA_FLUJO_CONSULTA = [
   'Son 4 agentes y 4 servidores MCP, uno por agente. Cada MCP solo tiene las herramientas de su agente: el Analista consulta glosario, HU aprobadas, estándares y checklist; el Asesor Técnico, código, estándares y HU aprobadas; el Redactor-Revisor, estándares, checklist y HU aprobadas; y el Gestor de Cambios, HU aprobadas, lecciones y checklist.',
   'El Gestor de Cambios sigue el mismo recorrido cuando llega una solicitud de cambio sobre una HU aprobada.',
   'Langfuse registra cada paso, para saber qué hizo cada agente y dónde se detuvo.',
+  'Cada agente recibe como máximo 12 000 tokens de evidencia: se quitan los resultados repetidos, quedan los más relevantes y lo recortado se marca para que el agente sepa que hay más.',
+  'Si un agente falla por algo pasajero (tardó demasiado o el proveedor no respondió), se reintenta solo hasta 3 veces, esperando 2, 4 y 8 segundos. Si se agotó la cuota, solo se espera si vuelve en un minuto o menos; si no, la pantalla dice a qué hora vuelve. Lo que no se arregla solo (una clave inválida) no se reintenta, y a quien creó la historia le llega el aviso «Falló un agente».',
   'Cada respuesta de OpenCode trae sus tokens y su costo: se guardan asociados a la historia y al agente. Así se sabe cuánto cuesta crear o cambiar una historia (Mantenimiento › Métricas › Consumo del modelo).',
 ];
 
@@ -212,6 +214,7 @@ export const OPCION_MENU = [
       'Cambio por decidir: llegó una solicitud de cambio sobre una HU aprobada.',
       'Devuelta: el Product Owner la devolvió con un motivo; quien la creó la retoma.',
       'Rechazada o Aprobada: avisos de cómo terminó una historia.',
+      'Falló un agente: un agente no pudo terminar ni con los reintentos automáticos; dice cuál y por qué, y se retoma desde ahí.',
       'Los que piden una decisión van primero; los demás se marcan como leídos.',
     ],
   },
@@ -409,6 +412,8 @@ export const PRODUCCION_ARQUITECTURA = [
   'Persistencia: cada pausa del flujo se guarda en la base de datos; se puede retomar otro día o después de un reinicio del servidor.',
   'Observabilidad: trazas por turno y por etapa, y registros estructurados que no guardan lo que genera el modelo ni datos personales.',
   'Costo medible: tokens y costo de cada llamada al modelo, por historia y por agente; se sabe cuánto cuesta crear o cambiar una historia.',
+  'Resiliencia: presupuesto de tokens por agente, reintentos automáticos solo para fallos pasajeros, un tiempo máximo para dejar de insistir, aviso a quien creó la historia y fiabilidad por agente en Métricas.',
+  'Secretos: ninguno en el código; las sesiones se firman con SESION_SECRETO propio, el token de GitHub avisa 14 días antes de vencer y las acciones de los workflows están fijadas por su commit.',
   'Seguridad: inicio de sesión por usuario y permisos por acción (cada rol tiene sus acciones y cada usuario sus roles), validados en el servidor; agentes sin permisos propios, herramientas de solo lectura por agente, entradas tratadas como no confiables y aprobación siempre humana.',
   'Configuración por entorno y despliegue en contenedor: las claves y direcciones no están en el código.',
   'Calidad: pruebas de backend, frontend y de extremo a extremo en la integración continua, más las pruebas de estructura.',

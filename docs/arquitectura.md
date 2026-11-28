@@ -103,6 +103,21 @@ Las listas paso a paso están en las skills `agregar-agente` y `agregar-ruta`.
 - **Calidad:** pruebas de backend, frontend y extremo a extremo en la integración continua, más las pruebas de estructura. Mantenimiento › Pruebas automatizadas ejecuta las de Playwright (web, tablet y móvil) en GitHub Actions a pedido, con evidencias en GitHub.
 - **Portabilidad:** `docker-compose.yml` levanta la misma imagen de Render en cualquier computadora, y las pruebas en su propia imagen de Playwright.
 
+## Resiliencia: saber cuándo dejar de insistir
+
+- **Presupuesto de tokens por agente** (`core/presupuesto_evidencia.py`, `PRESUPUESTO_EVIDENCIA_TOKENS`, 12 000 por
+  defecto): antes de enviar la evidencia al modelo se quitan los repetidos, se recorta parejo lo menos relevante y
+  se marca lo recortado. Un fragmento de código largo se recorta, no se descarta.
+- **Reintentos automáticos** (`core/reintento.py`): cada llamada del flujo a un agente pasa por `con_reintento`.
+  Fallos pasajeros (`TURN_TIMEOUT`, `OPENCODE_UNAVAILABLE`): hasta 3 reintentos a los 2, 4 y 8 s, más un poco de
+  azar. Cuota agotada: solo si vuelve en ≤ 60 s; si no, la API responde `OPENCODE_RATE_LIMITED` con `retry_at` y la
+  pantalla dice a qué hora vuelve. Lo permanente (clave, modelo, formato) no se reintenta. No se empieza un
+  reintento pasado `REINTENTO_TIEMPO_MAXIMO_SEGUNDOS` (240).
+- **Aviso de fallo** (`core/aviso_fallo.py`): si el agente no termina, quien creó la historia recibe en
+  Notificaciones «Falló un agente», con el agente y el motivo, sin detalles internos. No se repite mientras esté sin
+  leer y se cierra solo cuando el flujo vuelve a avanzar.
+- **Fiabilidad**: cada turno queda en `turno_agente` y se ve por agente en Mantenimiento › Métricas.
+
 ## Convenciones
 
 - Nombres en español y en singular (`listaAgente`, no `agentes`).

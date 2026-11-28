@@ -40,3 +40,15 @@ def _restore_knowledge_retriever():
     previous = retrieval._default_retriever
     yield
     retrieval._default_retriever = previous
+
+
+@pytest.fixture(autouse=True)
+def _reintentos_sin_espera(monkeypatch):
+    """Los reintentos automáticos esperan 2, 4 y 8 s: en las pruebas no se espera de verdad.
+    Las pruebas de ``core/reintento.py`` revisan las esperas con su propia costura."""
+    from agentes.analista.core import reintento
+
+    async def sin_espera(_segundos):
+        return None
+
+    monkeypatch.setattr(reintento, "_dormir", sin_espera)

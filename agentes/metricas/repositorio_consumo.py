@@ -14,7 +14,7 @@ from sqlalchemy import Boolean, Column, Float, Index, Integer, MetaData, String,
 from sqlalchemy.exc import IntegrityError
 
 from agentes.metricas.registro_consumo import (
-    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, UsoModelo,
+    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, TurnoAgente, UsoModelo,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,24 @@ consumo_modelo = Table(
     Index("ix_consumo_modelo_creado", "creado_en"),
 )
 
+# Un turno de un agente en el flujo: si respondió, cuántos intentos usó (1 = sin reintentos) y cuánto tardó.
+turno_agente = Table(
+    "turno_agente", _metadata,
+    Column("id", String(36), primary_key=True),
+    Column("workflow_id", String(36)),
+    Column("historia_id", String(100)),
+    Column("modo", String(20), nullable=False),
+    Column("agente", String(40), nullable=False),
+    Column("exitoso", Boolean, nullable=False),
+    Column("intentos", Integer, nullable=False),
+    Column("codigo_error", String(40)),
+    Column("duracion_ms", Integer, nullable=False),
+    Column("creado_en", String(40), nullable=False),
+    Index("ix_turno_agente_creado", "creado_en"),
+)
+
 _C = consumo_modelo.c
+_T = turno_agente.c
 _TOKENS_TOTAL = _C.tokens_entrada + _C.tokens_salida + _C.tokens_razonamiento + _C.tokens_cache_lectura + _C.tokens_cache_escritura
 
 
@@ -100,6 +117,41 @@ class RepositorioConsumo:
         except IntegrityError:
             logger.info("consumo_duplicado", extra={"event": "consumo_duplicado", "agente": uso.agente})
             return False
+
+    def guardar_turno(self, turno: TurnoAgente, contexto: ContextoConsumo) -> None:
+        with self.motor.begin() as conexion:
+            conexion.execute(insert(turno_agente).values(
+                id=str(uuid.uuid4()), workflow_id=contexto.workflow_id, historia_id=contexto.historia_id,
+                modo=contexto.modo, agente=turno.agente[:40], exitoso=turno.exitoso, intentos=turno.intentos,
+                codigo_error=(turno.codigo_error or None) and turno.codigo_error[:40],
+                duracion_ms=max(0, turno.duracion_ms), creado_en=turno.creado_en,
+            ))
+
+    def fiabilidad_por_agente(self, *, desde: str | None = None) -> list[dict[str, Any]]:
+        """Por agente: turnos, fallidos, con reintento, tasa de fallo y duración (promedio y máxima)."""
+        consulta = select(
+            _T.agente,
+            func.count(_T.id).label("turnos"),
+            func.coalesce(func.sum(case((_T.exitoso.is_(False), 1), else_=0)), 0).label("fallidos"),
+            func.coalesce(func.sum(case((_T.intentos > 1, 1), else_=0)), 0).label("con_reintento"),
+            func.coalesce(func.sum(_T.intentos - 1), 0).label("reintentos"),
+            func.avg(_T.duracion_ms).label("duracion_promedio_ms"),
+            func.max(_T.duracion_ms).label("duracion_maxima_ms"),
+        ).group_by(_T.agente)
+        if desde:
+            consulta = consulta.where(_T.creado_en >= desde)
+        with self.motor.connect() as conexion:
+            lista = [
+                {
+                    "agente": fila.agente, "turnos": int(fila.turnos), "fallidos": int(fila.fallidos or 0),
+                    "con_reintento": int(fila.con_reintento or 0), "reintentos": int(fila.reintentos or 0),
+                    "tasa_fallo": round(100 * int(fila.fallidos or 0) / int(fila.turnos), 1) if fila.turnos else 0.0,
+                    "duracion_promedio_ms": int(round(float(fila.duracion_promedio_ms or 0))),
+                    "duracion_maxima_ms": int(fila.duracion_maxima_ms or 0),
+                }
+                for fila in conexion.execute(consulta)
+            ]
+        return sorted(lista, key=lambda item: (item["tasa_fallo"], item["turnos"]), reverse=True)
 
     # --- Consultas ----------------------------------------------------------------------------------
     @staticmethod

@@ -342,6 +342,15 @@ def _translate_runtime_error(exc: Exception) -> WorkflowApiError:
             status_code=503,
             retryable=True,
         )
+    if isinstance(exc, (OpenCodeClientError, OrchestrationError)) and str(getattr(exc.code, "value", exc.code)) == ErrorCode.OPENCODE_RATE_LIMITED.value:
+        # La cuota no se arregla reintentando ya: se informa cuándo vuelve (si OpenCode lo dijo).
+        return WorkflowApiError(
+            ErrorCode.OPENCODE_RATE_LIMITED,
+            "Se agotó la cuota del modelo. El avance quedó guardado; reintente cuando vuelva la cuota.",
+            status_code=503,
+            retryable=True,
+            retry_at=exc.retry_at,
+        )
     if isinstance(exc, OpenCodeClientError):
         if exc.code == ErrorCode.TURN_TIMEOUT.value:
             return _translate_runtime_error(TimeoutError())

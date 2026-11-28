@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -19,12 +20,14 @@ logger = logging.getLogger(__name__)
 class WorkflowApiError(Exception):
     """A sanitized workflow API error using the Analyst error envelope."""
 
-    def __init__(self, code: ErrorCode, message: str, *, status_code: int, retryable: bool = False) -> None:
+    def __init__(self, code: ErrorCode, message: str, *, status_code: int, retryable: bool = False,
+                 retry_at: datetime | None = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message[:500]
         self.status_code = status_code
         self.retryable = retryable
+        self.retry_at = retry_at  # cuándo vuelve la cuota del modelo, si OpenCode lo informó
 
 
 def _status(code: ErrorCode) -> int:
@@ -68,7 +71,7 @@ def _status(code: ErrorCode) -> int:
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(WorkflowApiError)
     async def workflow_api_error(_: Request, exc: WorkflowApiError) -> JSONResponse:
-        detail = ErrorDetail(code=exc.code, message=exc.message, retryable=exc.retryable)
+        detail = ErrorDetail(code=exc.code, message=exc.message, retryable=exc.retryable, retry_at=exc.retry_at)
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(error=detail).model_dump(mode="json"),

@@ -32,6 +32,7 @@ SYNTHETIC_CHANGE = "Agregar la fecha de vencimiento al resumen"
 
 class SyntheticOpenCode:
     """Return deterministic synthetic model outputs at the external OpenCode boundary."""
+    analyst_failures_left = 0
 
     def __init__(self, *, prompt=None, agent_id=AgentId.ANALYST):
         self.prompt_snapshot = prompt
@@ -51,8 +52,8 @@ class SyntheticOpenCode:
 
     async def server_info(self):
         self.calls.append(self.agent_id.value)
-        if self.agent_id == AgentId.ANALYST and SyntheticOpenCode.fail_first_analyst_call:
-            SyntheticOpenCode.fail_first_analyst_call = False
+        if self.agent_id == AgentId.ANALYST and SyntheticOpenCode.analyst_failures_left > 0:
+            SyntheticOpenCode.analyst_failures_left -= 1
             from agentes.analista.core.opencode_client import OpenCodeClientError
             raise OpenCodeClientError(ErrorCode.TURN_TIMEOUT.value, "private synthetic timeout", retryable=True)
         return {"version": "2.0.27"}
@@ -190,8 +191,11 @@ def test_feature003_http_smoke_full_pre_post_grooming_sqlite(tmp_path, monkeypat
     import agentes.equipo.redactor_revisor.redactor_revisor_service as redactor_revisor
     import agentes.equipo.asesor_tecnico.asesor_tecnico_service as technical_advisor
 
+    import agentes.analista.core.reintento as reintento
+
     SyntheticOpenCode.calls = []
-    SyntheticOpenCode.fail_first_analyst_call = True
+    # Un fallo pasajero se reintenta solo (hasta 3 veces); el primer pedido agota los 4 intentos y responde 504.
+    SyntheticOpenCode.analyst_failures_left = 1 + len(reintento.ESPERA_SEGUNDO)
     for module in (change_manager, orchestrator, redactor_revisor, technical_advisor):
         monkeypatch.setattr(module, "OpenCodeClient", SyntheticOpenCode)
 

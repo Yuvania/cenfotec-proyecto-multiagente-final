@@ -1,4 +1,5 @@
-"""Registro del consumo del modelo: cada respuesta de OpenCode trae sus tokens y su costo.
+"""Registro del consumo del modelo: cada respuesta de OpenCode trae sus tokens y su costo. También el resultado
+de cada turno de un agente (si respondió, con cuántos intentos y cuánto tardó), para la fiabilidad por agente.
 
 Cómo llega cada dato al registro, sin tocar a los agentes:
 
@@ -72,10 +73,24 @@ class UsoModelo:
         return asdict(self) | {"tokens_total": self.tokens_total}
 
 
+@dataclass(frozen=True, slots=True)
+class TurnoAgente:
+    """Cómo terminó el turno de un agente en el flujo: si respondió, cuántos intentos usó y cuánto tardó."""
+
+    agente: str
+    exitoso: bool
+    intentos: int
+    duracion_ms: int
+    codigo_error: str | None = None
+    creado_en: str = field(default_factory=lambda: datetime.now(UTC).isoformat(timespec="milliseconds"))
+
+
 Registrador = Callable[[UsoModelo, ContextoConsumo], Awaitable[None]]
+RegistradorTurno = Callable[[TurnoAgente, ContextoConsumo], Awaitable[None]]
 
 _contexto: ContextVar[ContextoConsumo] = ContextVar("contexto_consumo", default=ContextoConsumo())
 _lista_registrador: list[Registrador] = []
+_lista_registrador_turno: list[RegistradorTurno] = []
 
 
 @contextmanager
@@ -112,6 +127,28 @@ async def registrar_uso(uso: UsoModelo) -> None:
         except Exception as exc:
             logger.warning("consumo_no_registrado", extra={
                 "event": "consumo_no_registrado", "error": type(exc).__name__, "agente": uso.agente,
+            })
+
+
+def agregar_registrador_turno(registrador: RegistradorTurno) -> None:
+    if registrador not in _lista_registrador_turno:
+        _lista_registrador_turno.append(registrador)
+
+
+def quitar_registrador_turno(registrador: RegistradorTurno) -> None:
+    if registrador in _lista_registrador_turno:
+        _lista_registrador_turno.remove(registrador)
+
+
+async def registrar_turno(turno: TurnoAgente) -> None:
+    """Entrega el resultado del turno de un agente (para la fiabilidad por agente). Nunca detiene el flujo."""
+    contexto = _contexto.get()
+    for registrador in list(_lista_registrador_turno):
+        try:
+            await registrador(turno, contexto)
+        except Exception as exc:
+            logger.warning("turno_no_registrado", extra={
+                "event": "turno_no_registrado", "error": type(exc).__name__, "agente": turno.agente,
             })
 
 

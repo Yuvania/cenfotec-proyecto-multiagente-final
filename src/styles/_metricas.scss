@@ -20,6 +20,8 @@
   &__vacio { font-size: 0.875rem; color: $color-text-muted; }
   &__texto { font-size: 0.875rem; color: $color-text-secondary; line-height: 1.5; }
   &__numero { font-variant-numeric: tabular-nums; text-align: right; }
+  &__alerta { color: $color-danger-text; font-weight: 600; }
+  &__fila-nombre { text-align: left; font-weight: 500; }
   &__resumen-historia { font-size: 0.95rem; margin-bottom: 1rem; font-variant-numeric: tabular-nums; }
 
   &__lista {
@@ -160,7 +162,7 @@
     border-collapse: collapse;
     font-size: 0.85rem;
 
-    th {
+    thead th {
       text-align: left;
       font-weight: 500;
       font-size: 0.75rem;
@@ -168,6 +170,9 @@
       padding: 0.5rem;
       border-bottom: 1px solid $color-border;
     }
+
+    tbody th { padding: 0.6rem 0.5rem; border-bottom: 1px solid $color-border; font-size: 0.85rem; }
+    tr:last-child th { border-bottom: 0; }
 
     th.metricas__numero { text-align: right; }
     td { padding: 0.6rem 0.5rem; border-bottom: 1px solid $color-border; vertical-align: middle; }
@@ -177,8 +182,8 @@
       thead { display: none; }
       tr { display: block; padding: 0.6rem 0; border-bottom: 1px solid $color-border; }
       tr:last-child { border-bottom: 0; }
-      td { display: flex; justify-content: space-between; gap: 1rem; padding: 0.2rem 0; border-bottom: 0; text-align: right; }
-      td::before { content: attr(data-etiqueta); color: $color-text-muted; font-size: 0.75rem; text-align: left; }
+      td, tbody th { display: flex; justify-content: space-between; gap: 1rem; padding: 0.2rem 0; border-bottom: 0; text-align: right; }
+      td::before, tbody th::before { content: attr(data-etiqueta); color: $color-text-muted; font-size: 0.75rem; text-align: left; }
     }
   }
 }

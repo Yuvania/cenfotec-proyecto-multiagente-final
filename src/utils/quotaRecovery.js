@@ -32,6 +32,16 @@ export function formatQuotaDuration(seconds) {
   return minutes ? `${hourLabel} y ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}` : hourLabel;
 }
 
+// Flujo de agentes: «Se agotó la cuota del modelo. Vuelve a las 3:40 p. m. (en 25 minutos)».
+export function quotaRecoveryWorkflowMessage(retryAt, now = Date.now()) {
+  const seconds = quotaRemainingSeconds(retryAt, now);
+  const guardado = 'El avance quedó guardado.';
+  if (seconds === null) return `Se agotó la cuota del modelo y OpenCode no informó cuándo vuelve. ${guardado} Reintente más tarde.`;
+  if (seconds === 0) return `Se agotó la cuota del modelo, pero ya debería haber vuelto. ${guardado} Puede reintentar.`;
+  const hora = new Date(Date.parse(retryAt)).toLocaleTimeString('es-CR', { hour: 'numeric', minute: '2-digit' });
+  return `Se agotó la cuota del modelo. Vuelve a las ${hora} (en ${formatQuotaDuration(seconds)}). ${guardado}`;
+}
+
 export function quotaRecoveryMessage(retryAt, now = Date.now()) {
   const seconds = quotaRemainingSeconds(retryAt, now);
   if (seconds === null) return QUOTA_RECOVERY_UNKNOWN;

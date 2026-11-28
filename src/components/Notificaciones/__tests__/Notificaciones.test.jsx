@@ -73,6 +73,22 @@ describe('Notificaciones', () => {
     expect(await screen.findByText('Asistente abierto')).toBeInTheDocument();
   });
 
+  it('«Falló un agente» explica qué pasó y permite retomar la historia', async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(pendientesApi.listar).mockResolvedValue({ por_decidir: [], total: 1, avisos: [{
+      id: 'a-9', tipo: 'fallo', titulo: 'Consulta de saldos ficticia', workflow_id: 'f-9', leido: false,
+      detalle: 'Asesor Técnico no pudo terminar: el proveedor del modelo no respondió. Se intentó 4 veces de forma automática.',
+      creado_en: '2030-01-06T10:00:00Z',
+    }] });
+    abrir();
+    const fila = (await screen.findByText('Consulta de saldos ficticia')).closest('li');
+    expect(within(fila).getByText('Falló un agente')).toBeInTheDocument();
+    expect(within(fila).getByText(/Asesor Técnico no pudo terminar/)).toBeInTheDocument();
+    expect(within(fila).queryByText(/Motivo:/)).not.toBeInTheDocument();
+    await usuario.click(within(fila).getByRole('button', { name: 'Retomar' }));
+    expect(await screen.findByText('Asistente abierto')).toBeInTheDocument();
+  });
+
   it('«Marcar todo como leído» llama al backend una sola vez', async () => {
     const usuario = userEvent.setup();
     abrir();

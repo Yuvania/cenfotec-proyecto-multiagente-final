@@ -40,7 +40,7 @@ vi.mock('../services/metricasApi.js', () => ({
   metricasApi: {
     leerConsumo: vi.fn(async (periodo) => ({
       periodo, lista_periodo: [{ codigo: '7', nombre: 'Últimos 7 días' }, { codigo: '30', nombre: 'Últimos 30 días' }, { codigo: 'todo', nombre: 'Todo' }],
-      total: TOTAL_VACIO, promedio_creacion: null, promedio_cambio: null, por_agente: [], por_modelo: [], por_dia: [],
+      total: TOTAL_VACIO, promedio_creacion: null, promedio_cambio: null, por_agente: [], fiabilidad: [], por_modelo: [], por_dia: [],
       por_flujo: [], prueba: null, aviso_costo: null,
     })),
     leerConsumoHistoria: vi.fn(async (historiaId) => ({ historia_id: historiaId, total: TOTAL_VACIO, por_agente: [], por_flujo: [] })),

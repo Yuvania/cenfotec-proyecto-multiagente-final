@@ -12,7 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from agentes.metricas.registro_consumo import (
-    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, UsoModelo,
+    MODO_CAMBIO, MODO_CREACION, ORIGEN_ESTIMADO, ORIGEN_SIN_PRECIO, ContextoConsumo, TurnoAgente, UsoModelo,
 )
 from agentes.metricas.repositorio_consumo import RepositorioConsumo, desde_dias
 
@@ -54,6 +54,9 @@ class MetricasService:
         nuevo = await asyncio.to_thread(self.repositorio.guardar, uso, contexto)
         if nuevo:
             self._enviar_a_langfuse(uso, contexto)
+
+    async def registrar_turno(self, turno: TurnoAgente, contexto: ContextoConsumo) -> None:
+        await asyncio.to_thread(self.repositorio.guardar_turno, turno, contexto)
 
     def _enviar_a_langfuse(self, uso: UsoModelo, contexto: ContextoConsumo) -> None:
         cliente = getattr(self.observability, "client", None)
@@ -120,6 +123,7 @@ class MetricasService:
             "promedio_creacion": promedio.get(MODO_CREACION),
             "promedio_cambio": promedio.get(MODO_CAMBIO),
             "por_agente": self._con_nombre(repositorio.por_agente(desde=desde)),
+            "fiabilidad": self._con_nombre(repositorio.fiabilidad_por_agente(desde=desde)),
             "por_modelo": lista_modelo,
             "por_dia": repositorio.por_dia(desde=desde),
             "por_flujo": repositorio.por_flujo(desde=desde, limite=50),

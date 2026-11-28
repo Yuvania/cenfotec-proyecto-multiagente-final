@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -31,12 +32,16 @@ from agentes.analista.memory.repositorio import RepositorioHU
 from agentes.conocimiento.sincronizacion import SincronizadorConocimiento
 from agentes.pruebas.pruebas_service import PruebasService
 from agentes.metricas.metricas_service import MetricasService
-from agentes.metricas.registro_consumo import agregar_registrador, quitar_registrador
+from agentes.metricas.registro_consumo import (
+    agregar_registrador, agregar_registrador_turno, quitar_registrador, quitar_registrador_turno,
+)
 from agentes.metricas.repositorio_consumo import RepositorioConsumo
 from agentes.pruebas.repositorio_pruebas import RepositorioPrueba
 from agentes.seguridad.clave import FirmaSesion
 from agentes.seguridad.repositorio_seguridad import RepositorioSeguridad
 
+
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,7 +65,11 @@ async def lifespan(app: FastAPI):
     if credenciales:
         app.state.seguridad = RepositorioSeguridad(app.state.repositorio.motor)
         app.state.seguridad.inicializar(*credenciales)
-        app.state.firma_sesion = FirmaSesion(os.environ.get("SESION_SECRETO", "").strip() or credenciales[1])
+        secreto = os.environ.get("SESION_SECRETO", "").strip()
+        if not secreto:
+            # Funciona, pero la misma clave haría dos trabajos y cambiarla cerraría todas las sesiones.
+            logger.warning("sesion_secreto_faltante", extra={"event": "sesion_secreto_faltante"})
+        app.state.firma_sesion = FirmaSesion(secreto or credenciales[1])
     # Pruebas automatizadas: corren en GitHub Actions; aquí solo se piden, se siguen y se guarda el resumen.
     app.state.pruebas = PruebasService(RepositorioPrueba(app.state.repositorio.motor))
     # Métricas: cada respuesta del modelo se guarda con sus tokens y su costo, asociada a su historia y agente.
@@ -69,6 +78,7 @@ async def lifespan(app: FastAPI):
         consumo_prueba=app.state.pruebas.consumo_desde,
     )
     agregar_registrador(app.state.metricas.registrar)
+    agregar_registrador_turno(app.state.metricas.registrar_turno)
     # Repositorio del Asesor y carga del conocimiento en Pinecone, en segundo plano y sin pasos manuales.
     app.state.sincronizador = SincronizadorConocimiento(repositorio=app.state.repositorio)
     app.state.repositorio.al_cambiar_conocimiento = app.state.sincronizador.programar_repositorio
@@ -92,6 +102,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         quitar_registrador(app.state.metricas.registrar)
+        quitar_registrador_turno(app.state.metricas.registrar_turno)
         await app.state.store.stop_cleanup()
         await app.state.observability.shutdown()
 

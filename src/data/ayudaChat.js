@@ -125,6 +125,17 @@ export const PREGUNTAS_AYUDA = [
       'Cada respuesta del modelo guarda sus tokens y su costo, asociados a la historia y al agente. En Mantenimiento › Métricas › Consumo del modelo se ve el costo promedio por historia creada y por cambio, por agente y por día; en el detalle de una historia, la pestaña «Consumo del modelo» muestra lo que costó esa historia. Hace falta la acción «Ver el consumo del modelo».',
   },
   {
+    id: 'fallo',
+    pregunta: '¿Qué pasa si falla un agente?',
+    texto: 'El avance nunca se pierde. Así se maneja:',
+    pasos: [
+      'Si el fallo es pasajero (tardó demasiado o el proveedor no respondió), se reintenta solo hasta 3 veces.',
+      'Si se agotó la cuota del modelo, la pantalla dice a qué hora vuelve.',
+      'Si aun así no termina, a quien creó la historia le llega en Notificaciones «Falló un agente», con el motivo.',
+      'Desde esa notificación, o desde Historias de usuario → En proceso, use Retomar para volver a intentarlo.',
+    ],
+  },
+  {
     id: 'pendientes',
     pregunta: '¿Dónde veo lo que tengo por aprobar?',
     texto:

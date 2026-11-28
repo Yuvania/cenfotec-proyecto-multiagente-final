@@ -148,6 +148,32 @@ const EjecucionActual = ({ ejecucion, alCancelar }) => (
   </section>
 );
 
+const fechaLarga = (valor) => new Date(valor).toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// El token de GitHub con vencimiento corto (90 días): se avisa 14 días antes para renovarlo a tiempo.
+export const AvisoTokenComponent = ({ token }) => {
+  if (!token) return null;
+  if (!token.informado) {
+    return <p className="pruebas__nota">El token de GitHub no informa fecha de vencimiento: se recomienda uno con vencimiento de 90 días.</p>;
+  }
+  if (token.dias < 0) {
+    return (
+      <AlertaComponent type="danger" title="El token de GitHub venció">
+        Venció el {fechaLarga(token.vence_en)}. Cree uno nuevo (90 días) y actualice GITHUB_PRUEBAS_TOKEN en el servicio.
+      </AlertaComponent>
+    );
+  }
+  if (token.por_vencer) {
+    return (
+      <AlertaComponent type="warning" title="El token de GitHub vence pronto">
+        Vence el {fechaLarga(token.vence_en)} ({token.dias === 1 ? 'mañana' : `en ${token.dias} días`}). Renuévelo con vencimiento de 90 días
+        y actualice GITHUB_PRUEBAS_TOKEN en el servicio.
+      </AlertaComponent>
+    );
+  }
+  return <p className="pruebas__nota">El token de GitHub vence el {fechaLarga(token.vence_en)}.</p>;
+};
+
 export const PruebasComponent = () => {
   const confirmar = useConfirmacion();
   const { configuracion, panel, cargando, error, enviando, ejecutar, cancelar } = usePruebas();
@@ -177,6 +203,7 @@ export const PruebasComponent = () => {
         </AlertaComponent>
       )}
       {error && <AlertaComponent type="warning" title="Atención">{error}</AlertaComponent>}
+      <AvisoTokenComponent token={configuracion?.token} />
 
       <div className="pruebas__indicadores" aria-label="Indicadores">
         <Indicador etiqueta="Última ejecución" valor={ultima ? numeroEjecucion(ultima.numero) : '—'}

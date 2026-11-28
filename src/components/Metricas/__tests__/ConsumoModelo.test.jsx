@@ -24,6 +24,10 @@ const PANEL = {
     { agente: 'redactor_revisor', nombre: 'Redactor-Revisor', llamadas: 4, tokens_total: 20000, costo_usd: 0.03 },
     { agente: 'analista', nombre: 'Agente Analista', llamadas: 8, tokens_total: 20000, costo_usd: 0.0156 },
   ],
+  fiabilidad: [
+    { agente: 'asesor_tecnico', nombre: 'Asesor Técnico', turnos: 4, fallidos: 1, con_reintento: 2, reintentos: 5, tasa_fallo: 25, duracion_promedio_ms: 95000, duracion_maxima_ms: 180000 },
+    { agente: 'analista', nombre: 'Agente Analista', turnos: 6, fallidos: 0, con_reintento: 0, reintentos: 0, tasa_fallo: 0, duracion_promedio_ms: 40000, duracion_maxima_ms: 61000 },
+  ],
   por_modelo: [{ proveedor: 'opencode', modelo: 'glm-5.3-flash', tokens_total: 40000, costo_usd: 0.0456, estimadas: 0, sin_precio: 0 }],
   por_dia: [{ dia: '2026-11-27', costo_usd: 0.02, tokens_total: 18000 }, { dia: '2026-11-28', costo_usd: 0.0256, tokens_total: 22000 }],
   por_flujo: [{
@@ -54,6 +58,11 @@ describe('Consumo del modelo', () => {
     const tokens = screen.getByRole('table', { name: 'Consumo por historia' }).querySelector('td[data-etiqueta="Tokens"]');
     expect(tokens.textContent.replace(/\s/g, '')).toBe(formatoToken(20000).replace(/\s/g, ''));
     expect(screen.getByText(/Diagnosticó fallos en 1 ejecución/)).toBeInTheDocument();
+    const fiabilidad = screen.getByRole('table', { name: 'Fiabilidad por agente' });
+    const asesor = within(fiabilidad).getByRole('rowheader', { name: 'Asesor Técnico' }).closest('tr');
+    expect(asesor).toHaveTextContent('25 %');
+    expect(asesor).toHaveTextContent('01:35');
+    expect(asesor).toHaveTextContent('03:00');
     expect(screen.getByText('Costo por día', { selector: 'caption' })).toBeInTheDocument();
   });
 

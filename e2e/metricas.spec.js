@@ -17,6 +17,10 @@ const PANEL = {
     { agente: 'asesor_tecnico', nombre: 'Asesor Técnico', llamadas: 2, tokens_total: 10000, costo_usd: 0.009 },
     { agente: 'gestor_cambios', nombre: 'Gestor de Cambios', llamadas: 2, tokens_total: 6000, costo_usd: 0.0052 },
   ],
+  fiabilidad: [
+    { agente: 'asesor_tecnico', nombre: 'Asesor Técnico', turnos: 3, fallidos: 1, con_reintento: 1, reintentos: 3, tasa_fallo: 33.3, duracion_promedio_ms: 80000, duracion_maxima_ms: 150000 },
+    { agente: 'analista', nombre: 'Agente Analista', turnos: 6, fallidos: 0, con_reintento: 1, reintentos: 1, tasa_fallo: 0, duracion_promedio_ms: 42000, duracion_maxima_ms: 70000 },
+  ],
   por_modelo: [{ proveedor: 'opencode', modelo: 'glm-5.3-flash', tokens_total: 64000, costo_usd: 0.0612, estimadas: 0, sin_precio: 0 }],
   por_dia: [
     { dia: '2030-01-01', costo_usd: 0.021, tokens_total: 20000 },
@@ -60,6 +64,11 @@ test.describe('Consumo del modelo', { tag: ['@mantenimiento', '@consumo'] }, () 
       const porHistoria = page.getByRole('table', { name: 'Consumo por historia' });
       await expect(porHistoria).toContainText('Consulta de saldos');
       await expect(porHistoria).toContainText('Cambio');
+    });
+
+    await test.step('Ve la fiabilidad de cada agente', async () => {
+      const fiabilidad = page.getByRole('table', { name: 'Fiabilidad por agente' });
+      await expect(fiabilidad.getByRole('row', { name: /Asesor Técnico/ })).toContainText('33,3 %');
     });
 
     await test.step('Cambia el periodo a los últimos 7 días', async () => {

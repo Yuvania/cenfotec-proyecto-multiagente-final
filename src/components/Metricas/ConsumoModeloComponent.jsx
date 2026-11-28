@@ -4,7 +4,7 @@ import { TituloPaginaComponent } from '../Comun/TituloPaginaComponent';
 import { AlertaComponent } from '../Comun/AlertaComponent';
 import { useConsumoModelo } from '../../hooks/useConsumoModelo';
 import { getStoryById } from '../../utils/storage';
-import { fechaCorta } from '../../utils/formatoPruebas';
+import { duracion, fechaCorta } from '../../utils/formatoPruebas';
 import { NOMBRE_MODO, formatoCosto, formatoToken, formatoTokenCorto } from '../../utils/formatoMetricas';
 import { BarrasConsumoComponent, ColumnasDiaComponent } from './GraficoConsumoComponent';
 
@@ -56,6 +56,37 @@ export const TablaFlujoComponent = ({ lista, etiqueta }) => (
             <td data-etiqueta="Llamadas" className="metricas__numero">{flujo.llamadas}</td>
             <td data-etiqueta="Tokens" className="metricas__numero">{formatoToken(flujo.tokens_total)}</td>
             <td data-etiqueta="Costo" className="metricas__numero">{formatoCosto(flujo.costo_usd)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// Fiabilidad: cuántos turnos de cada agente terminaron, cuántos necesitaron reintentos y cuánto tardan.
+export const TablaFiabilidadComponent = ({ lista }) => (
+  <div className="metricas__tabla-contenedor">
+    <table className="metricas__tabla" aria-label="Fiabilidad por agente">
+      <thead>
+        <tr>
+          <th scope="col">Agente</th><th scope="col" className="metricas__numero">Turnos</th>
+          <th scope="col" className="metricas__numero">Con reintento</th><th scope="col" className="metricas__numero">Fallidos</th>
+          <th scope="col" className="metricas__numero">Tasa de fallo</th><th scope="col" className="metricas__numero">Duración promedio</th>
+          <th scope="col" className="metricas__numero">Máxima</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lista.map((item) => (
+          <tr key={item.agente}>
+            <th scope="row" data-etiqueta="Agente" className="metricas__fila-nombre">{item.nombre}</th>
+            <td data-etiqueta="Turnos" className="metricas__numero">{item.turnos}</td>
+            <td data-etiqueta="Con reintento" className="metricas__numero">{item.con_reintento}</td>
+            <td data-etiqueta="Fallidos" className="metricas__numero">{item.fallidos}</td>
+            <td data-etiqueta="Tasa de fallo" className={`metricas__numero ${item.tasa_fallo > 0 ? 'metricas__alerta' : ''}`}>
+              {`${String(item.tasa_fallo).replace('.', ',')} %`}
+            </td>
+            <td data-etiqueta="Duración promedio" className="metricas__numero">{duracion(item.duracion_promedio_ms)}</td>
+            <td data-etiqueta="Máxima" className="metricas__numero">{duracion(item.duracion_maxima_ms)}</td>
           </tr>
         ))}
       </tbody>
@@ -121,6 +152,15 @@ export const ConsumoModeloComponent = () => {
             : <p className="metricas__vacio">{cargando ? 'Consultando…' : 'Sin datos.'}</p>}
         </section>
       </div>
+
+      <section className="metricas__tarjeta" aria-labelledby="metricas-fiabilidad">
+        <h2 id="metricas-fiabilidad" className="metricas__subtitulo">Fiabilidad por agente</h2>
+        <p className="metricas__nota">
+          Cada turno de un agente en el flujo: si terminó, si necesitó reintentos automáticos (fallos pasajeros, hasta 3) y cuánto tardó.
+        </p>
+        {(panel?.fiabilidad?.length ?? 0) > 0 ? <TablaFiabilidadComponent lista={panel.fiabilidad} />
+          : <p className="metricas__vacio">{cargando ? 'Consultando…' : 'Sin datos.'}</p>}
+      </section>
 
       <section className="metricas__tarjeta" aria-labelledby="metricas-historia">
         <h2 id="metricas-historia" className="metricas__subtitulo">Por historia</h2>

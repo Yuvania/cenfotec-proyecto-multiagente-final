@@ -292,3 +292,23 @@ def test_los_pasos_del_workflow_alimentan_la_linea_de_tiempo():
     for _, _, prefijo in LISTA_ETAPA:
         if prefijo:
             assert any(nombre.startswith(prefijo) for nombre in lista_nombre), prefijo
+
+
+@pytest.mark.asyncio
+async def test_lee_el_vencimiento_del_token_de_github():
+    from datetime import UTC, datetime
+
+    from agentes.pruebas.github_actions_service import _con_dias, leer_vencimiento
+
+    leido = leer_vencimiento("2030-03-01 12:00:00 UTC")
+    assert leido == {"vence_en": "2030-03-01T12:00:00+00:00", "informado": True}
+    assert _con_dias(leido, datetime(2030, 2, 20, tzinfo=UTC))["por_vencer"] is True
+    assert _con_dias(leido, datetime(2029, 12, 1, tzinfo=UTC))["por_vencer"] is False
+    assert leer_vencimiento(None)["informado"] is False
+
+    def responder(_request):
+        return httpx.Response(200, json={}, headers={"github-authentication-token-expiration": "2030-03-01 12:00:00 UTC"})
+
+    servicio = GitHubActionsService(ConfiguracionGitHub(TOKEN, "equipo/app", "main"), transport=httpx.MockTransport(responder))
+    token = await servicio.vencimiento_token()
+    assert token["vence_en"] == "2030-03-01T12:00:00+00:00" and token["informado"] is True

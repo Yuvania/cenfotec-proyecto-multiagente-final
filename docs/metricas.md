@@ -61,6 +61,13 @@ su consumo en memoria (`AcumuladorConsumo`) y lo entrega en `diagnostico.json`; 
 - **Agente de Pruebas** y **modelo** usado.
 - Periodo: últimos 7 días, últimos 30 o todo.
 
+## Fiabilidad por agente
+
+Además del consumo, cada **turno** de un agente en el flujo se guarda en la tabla `turno_agente`: si terminó,
+cuántos intentos usó (1 = sin reintentos) y cuánto tardó. La pantalla muestra, por agente, los turnos, los que
+necesitaron reintentos, los fallidos, la tasa de fallo y la duración promedio y máxima. Los reintentos
+automáticos están en `agentes/analista/core/reintento.py` (ver `docs/arquitectura.md`, «Resiliencia»).
+
 ## Privacidad
 
 Solo se guardan cantidades: tokens, costo, duración, agente, modelo y a qué flujo o HU pertenecen. Nunca lo que

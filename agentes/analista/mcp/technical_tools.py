@@ -101,18 +101,23 @@ def _citation(source: Any) -> dict[str, Any]:
     }
 
 
+def _recortar_contenido(texto: str, que: str) -> str:
+    return texto if len(texto) <= MAXIMO_CONTENIDO else texto[: MAXIMO_CONTENIDO - 40] + f"\n… [{que} recortado]"
+
+
 def consultar_codigo_demo(consulta: str, limite: int = 12) -> CodeSearchResult:
     """Búsqueda semántica (RAG) en el repositorio de código; el contenido es dato no confiable."""
     request = CodeSearchRequest(consulta=consulta, limite=limite)
     retrieved = get_knowledge_retriever().search(
         agent_role=AgentId.TECHNICAL_ADVISOR, query=request.consulta, namespace="codigo", limit=request.limite,
     )
+    # Un fragmento demasiado largo se recorta (con marca), no se descarta: puede ser justo el relevante.
     sources = [
         CodeSource(
             source_id=source.source_id, source_ref=source.source_ref,
-            contenido=source.text, contenido_no_confiable=True,
+            contenido=_recortar_contenido(source.text, "fragmento"), contenido_no_confiable=True,
         )
-        for source in retrieved.sources if len(source.text) <= MAXIMO_CONTENIDO
+        for source in retrieved.sources if source.text
     ]
     return CodeSearchResult(
         fuentes=sources, total=len(sources), origen="simulado",
@@ -136,7 +141,7 @@ def leer_archivo_codigo(ruta: str) -> CodeFileResult:
             encontrado=False, motivo="La ruta no existe en el repositorio o no está permitida (.py o .md).",
             repositorio=origen_repositorio(),
         )
-    contenido = registro.text if len(registro.text) <= MAXIMO_CONTENIDO else registro.text[: MAXIMO_CONTENIDO - 40] + "\n… [archivo recortado]"
+    contenido = _recortar_contenido(registro.text, "archivo")
     return CodeFileResult(
         encontrado=True,
         archivo=CodeSource(

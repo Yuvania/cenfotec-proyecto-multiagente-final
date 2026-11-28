@@ -21,6 +21,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, ConfigDict, Field
 
+from agentes.analista.core.presupuesto_evidencia import ajustar_fuente, estimar_token
 from agentes.analista.core.agent_registry import AgentId
 from agentes.analista.core.ciclo_agente import ResultadoCiclo, ejecutar_ciclo
 from agentes.analista.core.opencode_client import OpenCodeClient
@@ -214,7 +215,11 @@ class AsesorTecnicoService(AgenteOpenCodeService[TechnicalAssessment]):
             return ciclo
 
         def armar_mensaje(_turno: Turno) -> str:
-            fuente = [*evidencia["codigo"], *(evidencia["estandar"] or [])]
+            # Presupuesto de tokens: el agente solo puede citar las fuentes que recibe (el catálogo sale de ellas).
+            fuente, _ajuste = ajustar_fuente(
+                [*evidencia["codigo"], *(evidencia["estandar"] or [])], agente=self.agente.value,
+                reservado=estimar_token(evidencia["memoria"] or []),
+            )
             evidencia["catalogo"] = self._catalog(fuente)
             try:
                 prompt = _PROMPT.format_messages(

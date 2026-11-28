@@ -225,6 +225,10 @@ class PruebasService:
         self._candado = asyncio.Lock()
 
     # --- Lectura ----------------------------------------------------------
+    async def configuracion_con_token(self) -> dict[str, Any]:
+        """La configuración más el vencimiento del token de GitHub (para avisar antes de que venza)."""
+        return {**self.configuracion(), "token": await self.github.vencimiento_token()}
+
     def configuracion(self) -> dict[str, Any]:
         return {
             **como_dict(),

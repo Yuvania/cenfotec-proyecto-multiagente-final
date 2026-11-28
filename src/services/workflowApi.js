@@ -1,4 +1,5 @@
 import { avisarSesionVencida, encabezadoSesion } from '../utils/sesion.js';
+import { quotaRecoveryWorkflowMessage } from '../utils/quotaRecovery.js';
 const API_BASE = '/api/workflows';
 
 const STATUS_MESSAGES = Object.freeze({
@@ -14,9 +15,10 @@ const STATUS_MESSAGES = Object.freeze({
 export class WorkflowApiError extends Error {
   constructor(status, payload = {}, { path = '', method = 'GET' } = {}) {
     const detail = payload?.error ?? {};
+    const cuotaAgotada = detail.code === 'OPENCODE_RATE_LIMITED';
     const safeMessage = status === 404 && method === 'POST' && path === ''
       ? 'El endpoint de workflows no está disponible en este backend. Puede continuar con el flujo manual.'
-      : STATUS_MESSAGES[status];
+      : (cuotaAgotada ? quotaRecoveryWorkflowMessage(detail.retry_at) : STATUS_MESSAGES[status]);
     super(safeMessage ?? (typeof detail.message === 'string'
       ? detail.message
       : 'No fue posible completar la solicitud del flujo.'));
@@ -25,6 +27,7 @@ export class WorkflowApiError extends Error {
     this.code = typeof detail.code === 'string' ? detail.code : 'NETWORK_ERROR';
     this.retryable = Boolean(detail.retryable);
     this.requestId = typeof detail.request_id === 'string' ? detail.request_id : undefined;
+    this.retryAt = typeof detail.retry_at === 'string' ? detail.retry_at : undefined;
   }
 }
 

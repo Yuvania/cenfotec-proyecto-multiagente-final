@@ -20,6 +20,8 @@ from agentes.equipo.gestor_cambios.gestor_cambios_service import GestorCambiosSe
 from agentes.analista.core.conversation_store import ConversationStore, StoreError
 from agentes.analista.core.models import AgentTurnResponse, SendMessageRequest, QuestionState
 from agentes.metricas.registro_consumo import MODO_CAMBIO, MODO_CREACION, contexto_consumo
+from agentes.analista.core.reintento import con_reintento
+from agentes.analista.core.aviso_fallo import TIPO_AVISO_FALLO, agente_del_error, detalle_fallo, es_fallo_de_agente
 from agentes.analista.core.observability import Observability
 from agentes.analista.core.prompt_loader import load_prompt
 from agentes.equipo.redactor_revisor.redactor_revisor_service import RedactorRevisorService
@@ -205,7 +207,8 @@ def build_workflow_graph(
     async def call_analyst(state: WorkflowState) -> AgentTurnResponse | Mapping[str, Any]:
         if analyst is None:
             raise RuntimeError("El nodo Analista requiere el adaptador de run_turn.")
-        return await analyst(state)
+        # Cada agente se reintenta solo ante fallos pasajeros (ver core/reintento.py).
+        return await con_reintento(AgentId.ANALYST.value, lambda: analyst(state))
 
     def analysis_with_impact(state: WorkflowState) -> dict[str, Any]:
         """Lo que el Redactor recibe: el análisis, el impacto en otros módulos y las decisiones tomadas."""
@@ -221,30 +224,30 @@ def build_workflow_graph(
 
     async def call_draft(state: WorkflowState) -> StoryDraftContent | Mapping[str, Any]:
         if draft is not None:
-            return await draft(state)
+            return await con_reintento(AgentId.WRITER_REVIEWER.value, lambda: draft(state))
         # El Redactor-Revisor decide qué consultar en su servidor MCP (RAG detrás).
-        return await writer.draft(
+        return await con_reintento(AgentId.WRITER_REVIEWER.value, lambda: writer.draft(
             requirement=state["requirement_input"] or "",
             analyst_response=analysis_with_impact(state),
             previous_story=state.get("draft_story"),
             observations=state.get("review_observations", []),
-        )
+        ))
 
     async def call_review(state: WorkflowState) -> StoryReviewOutput | Mapping[str, Any]:
         if review is not None:
-            return await review(state)
-        return await writer.review(
+            return await con_reintento(AgentId.WRITER_REVIEWER.value, lambda: review(state))
+        return await con_reintento(AgentId.WRITER_REVIEWER.value, lambda: writer.review(
             requirement=state["requirement_input"] or "",
             analyst_response=analysis_with_impact(state),
             story=state["draft_story"],
             devolucion_po=_devolucion_en_curso(state),
-        )
+        ))
 
     async def call_advisor(state: WorkflowState) -> TechnicalAssessment | Mapping[str, Any]:
         if advisor is not None:
-            return await advisor(state)
+            return await con_reintento(AgentId.TECHNICAL_ADVISOR.value, lambda: advisor(state))
         analysis = (state.get("analyst_response") or {}).get("analisis", {})
-        return await technical_advisor.assess(
+        return await con_reintento(AgentId.TECHNICAL_ADVISOR.value, lambda: technical_advisor.assess(
             requirement=state.get("requirement_input") or "",
             story={
                 "analisis_validado": analysis,
@@ -257,7 +260,7 @@ def build_workflow_graph(
                 **({"historia_en_borrador": state["draft_story"]} if state.get("draft_story") else {}),
                 **({"product_owner_feedback": state["po_feedback"]} if state.get("po_feedback") else {}),
             },
-        )
+        ))
 
     def get_repository() -> Any:
         nonlocal repository_instance
@@ -299,14 +302,14 @@ def build_workflow_graph(
             raise WorkflowDependencyError("El Repositorio no devolvió la HU aprobada solicitada.")
         if change_manager is None:
             # El Gestor consulta HU aprobadas, lecciones y checklist por MCP, y puede pedir criterio al Asesor.
-            recommendation = await manager.evaluate(
+            recommendation = await con_reintento(AgentId.CHANGE_MANAGER.value, lambda: manager.evaluate(
                 approved_story_id=approved_story_id,
                 change_request=change_request,
                 repository=repository_ref,
                 approved_story=approved_story,
-            )
+            ))
         else:
-            recommendation = await change_manager(state, repository_ref)
+            recommendation = await con_reintento(AgentId.CHANGE_MANAGER.value, lambda: change_manager(state, repository_ref))
         recommendation = ChangeRecommendation.model_validate(recommendation)
         context = {
             key: approved_story[key] for key in (
@@ -1053,11 +1056,47 @@ class WorkflowRuntime:
                 titulo=meta.get("titulo"), modo=meta.get("modo") or MODO_CREACION,
             ):
                 result = await self._graph.ainvoke(entrada, config=self._thread_config(workflow_id))
-        except Exception:
+        except Exception as exc:
             await asyncio.to_thread(self._persistir, workflow_id, error=True)
+            if es_fallo_de_agente(exc):
+                await asyncio.to_thread(self._avisar_fallo, workflow_id, exc)
             raise
         await asyncio.to_thread(self._persistir, workflow_id)
+        await asyncio.to_thread(self._cerrar_aviso_fallo, workflow_id)
         return _public_snapshot(result)
+
+    # --- Aviso de fallo a quien creó la historia ------------------------------
+    def _avisar_fallo(self, workflow_id: UUID, exc: BaseException) -> None:
+        """Avisa en Notificaciones que un agente no pudo terminar. No se repite si ya hay uno sin leer."""
+        meta = self._meta.get(workflow_id, {})
+        creador = meta.get("creado_por_usuario")
+        repositorio = self._persistencia
+        if not creador or repositorio is None or not hasattr(repositorio, "registrar_aviso"):
+            return
+        try:
+            if repositorio.hay_aviso_sin_leer(usuario_id=creador, tipo=TIPO_AVISO_FALLO, workflow_id=str(workflow_id)):
+                return
+            try:
+                valores = dict(self._graph.get_state(self._thread_config(workflow_id)).values)
+            except Exception as leer:
+                logger.info("Sin estado para el aviso de fallo %s: %s", workflow_id, type(leer).__name__)
+                valores = {}
+            repositorio.registrar_aviso(
+                usuario_id=creador, tipo=TIPO_AVISO_FALLO, titulo=meta.get("titulo") or "Sin título",
+                workflow_id=str(workflow_id), detalle=detalle_fallo(exc, agente=agente_del_error(exc, valores)),
+            )
+        except Exception as fallo:
+            logger.warning("No se pudo avisar el fallo del flujo %s: %s", workflow_id, type(fallo).__name__)
+
+    def _cerrar_aviso_fallo(self, workflow_id: UUID) -> None:
+        """El flujo volvió a avanzar: el aviso de fallo pendiente queda leído."""
+        repositorio = self._persistencia
+        if repositorio is None or not hasattr(repositorio, "cerrar_aviso_flujo"):
+            return
+        try:
+            repositorio.cerrar_aviso_flujo(workflow_id=str(workflow_id), tipo=TIPO_AVISO_FALLO)
+        except Exception as fallo:
+            logger.warning("No se pudo cerrar el aviso de fallo del flujo %s: %s", workflow_id, type(fallo).__name__)
 
     # --- Ciclo de vida --------------------------------------------------------
     def start(self, request: WorkflowCreateRequest) -> WorkflowSnapshot:

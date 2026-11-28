@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agentes.analista.core.agent_registry import AgentId, MAXIMO_RONDA_HERRAMIENTA, puede_consultar_asesor
 from agentes.analista.core.ejecutor_mcp import HerramientaDisponible, ResultadoHerramienta, SesionMCP
+from agentes.analista.core.presupuesto_evidencia import AjusteEvidencia, ajustar_observacion, estimar_token, presupuesto_configurado
 
 logger = logging.getLogger(__name__)
 
@@ -68,13 +69,25 @@ class ResultadoCiclo:
     resultado: list[ResultadoHerramienta] = field(default_factory=list)
     limitacion: list[str] = field(default_factory=list)
     asesor: dict[str, Any] | None = None
+    agente: str = ""
+    ajuste: AjusteEvidencia | None = None
 
-    def observacion(self) -> list[dict[str, Any]]:
-        """Evidencia para el prompt final: solo resultados correctos, como datos no confiables."""
-        salida = [item.como_observacion() for item in self.resultado if item.estado == "ok"]
+    def observacion(self, presupuesto: int | None = None) -> list[dict[str, Any]]:
+        """Evidencia para el prompt final: solo resultados correctos, como datos no confiables, dentro del
+        presupuesto de tokens del agente (ver ``presupuesto_evidencia``). El criterio del Asesor no se recorta:
+        se descuenta del presupuesto."""
+        presupuesto = presupuesto or presupuesto_configurado()
+        asesor = None
         if self.asesor is not None:
-            salida.append({"nombre": "consultar_asesor_tecnico", "consulta": self.asesor.get("pregunta"), "datos": self.asesor.get("evaluacion"), "resultados": 1})
-        return salida
+            asesor = {"nombre": "consultar_asesor_tecnico", "consulta": self.asesor.get("pregunta"), "datos": self.asesor.get("evaluacion"), "resultados": 1}
+        disponible = max(1_000, presupuesto - (estimar_token(asesor) if asesor else 0))
+        salida, self.ajuste = ajustar_observacion(
+            [item.como_observacion() for item in self.resultado if item.estado == "ok"], disponible, agente=self.agente,
+        )
+        nota = self.ajuste.limitacion()
+        if nota and nota not in self.limitacion:
+            self.limitacion.append(nota)
+        return [*salida, asesor] if asesor else salida
 
     def resumen_plan(self) -> list[dict[str, Any]]:
         return [
@@ -232,7 +245,7 @@ async def ejecutar_ciclo(
     agent_id = AgentId(agent_id)
     maximo = max(1, maximo_ronda or MAXIMO_RONDA_HERRAMIENTA[agent_id])
     asesor_disponible = consultor_asesor is not None and puede_consultar_asesor(agent_id)
-    salida = ResultadoCiclo()
+    salida = ResultadoCiclo(agente=agent_id.value)
     solicitud_asesor: str | None = None
     async with sesion_mcp_factory(agent_id, trace=trace) as sesion:
         catalogo = sesion.catalogo()

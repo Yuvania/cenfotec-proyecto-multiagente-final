@@ -35,6 +35,8 @@ services:
         sync: false
       - key: ACCESO_CLAVE
         sync: false
+      - key: SESION_SECRETO   # firma las sesiones; distinto de ACCESO_CLAVE (ver DESPLIEGUE.md)
+        sync: false
       - key: LANGFUSE_PUBLIC_KEY
         sync: false
       - key: LANGFUSE_SECRET_KEY

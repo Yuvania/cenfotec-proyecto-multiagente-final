@@ -148,3 +148,14 @@ def test_cada_opcion_del_menu_tiene_etiqueta_corta_para_movil():
         corta = re.search(r"corta: '([^']+)'", menu)
         assert corta, f"Falta «corta» en el menú: {menu.strip()[:60]}"
         assert len(corta.group(1)) <= 9, f"La etiqueta corta «{corta.group(1)}» supera 9 letras."
+
+
+def test_las_acciones_de_github_estan_fijadas_por_commit():
+    """Un workflow con secretos ejecuta código de terceros: se fija por su commit (SHA), no por una etiqueta
+    que alguien podría mover. Para actualizar: el SHA nuevo y la versión en el comentario (`@<sha> # v5`)."""
+    for archivo in sorted((RAIZ / ".github" / "workflows").glob("*.yml")):
+        for uso in re.findall(r"uses:\s*(\S+)", archivo.read_text(encoding="utf-8")):
+            if uso.startswith("./") or uso.startswith("docker://"):
+                continue
+            assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40}", uso), (
+                f"{archivo.name}: «{uso}» no está fijada por commit. Use `{uso.split('@')[0]}@<sha de 40> # versión`.")

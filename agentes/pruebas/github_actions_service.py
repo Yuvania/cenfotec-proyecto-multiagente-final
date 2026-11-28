@@ -15,8 +15,10 @@ import json
 import logging
 import os
 import re
+import time
 import zipfile
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -29,6 +31,33 @@ ARCHIVO_RESUMEN = "resumen.json"
 _MAXIMO_RESUMEN = 4 * 1024 * 1024  # bytes del resumen descomprimido
 _PATRON_REPOSITORIO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _PATRON_RAMA = re.compile(r"^[A-Za-z0-9_./-]{1,120}$")
+
+
+ENCABEZADO_VENCIMIENTO = "github-authentication-token-expiration"
+DIAS_AVISO_VENCIMIENTO = 14
+
+
+def leer_vencimiento(valor: str | None) -> dict[str, Any]:
+    """«2027-02-15 12:00:00 UTC» → {"vence_en": "2027-02-15T12:00:00+00:00", "informado": True}."""
+    if not valor:
+        return {"vence_en": None, "informado": False}
+    texto = valor.strip()
+    for formato in ("%Y-%m-%d %H:%M:%S %Z", "%Y-%m-%d %H:%M:%S %z"):
+        try:
+            momento = datetime.strptime(texto, formato)
+        except ValueError:
+            continue
+        momento = momento if momento.tzinfo else momento.replace(tzinfo=UTC)
+        return {"vence_en": momento.astimezone(UTC).isoformat(), "informado": True}
+    logger.info("vencimiento_formato_desconocido", extra={"event": "vencimiento_formato_desconocido"})
+    return {"vence_en": None, "informado": False}
+
+
+def _con_dias(dato: dict[str, Any], ahora: datetime | None = None) -> dict[str, Any]:
+    if not dato.get("vence_en"):
+        return {**dato, "dias": None, "por_vencer": False}
+    dias = (datetime.fromisoformat(dato["vence_en"]) - (ahora or datetime.now(UTC))).days
+    return {**dato, "dias": dias, "por_vencer": dias <= DIAS_AVISO_VENCIMIENTO}
 
 
 class GitHubActionsError(Exception):
@@ -79,6 +108,8 @@ class GitHubActionsService:
         self.configuracion = configuracion or ConfiguracionGitHub.from_environment()
         self._transport = transport
         self._timeout = timeout
+        # Vencimiento del token (GitHub lo informa en cada respuesta de un token fine-grained). Se guarda una hora.
+        self._vencimiento: tuple[float, dict[str, Any]] | None = None
 
     # --- Utilidades -----------------------------------------------------
     @property
@@ -143,7 +174,25 @@ class GitHubActionsService:
                 "event": "github_actions_sin_conexion", "operacion": operacion, "error": type(exc).__name__})
             raise GitHubActionsError("No se pudo conectar con GitHub. Intente de nuevo en unos minutos.") from exc
         self._revisar(respuesta, operacion)
+        self._anotar_vencimiento(respuesta)
         return respuesta
+
+    def _anotar_vencimiento(self, respuesta: httpx.Response) -> None:
+        self._vencimiento = (time.monotonic(), leer_vencimiento(respuesta.headers.get(ENCABEZADO_VENCIMIENTO)))
+
+    async def vencimiento_token(self) -> dict[str, Any] | None:
+        """Cuándo vence el token: {"vence_en": ISO o None, "dias": n o None, "informado": bool}. None sin token.
+        Consulta GitHub como máximo una vez por hora (lo actualiza también cualquier otra llamada)."""
+        if not self.configurado:
+            return None
+        if self._vencimiento is not None and time.monotonic() - self._vencimiento[0] < 3600:
+            return _con_dias(self._vencimiento[1])
+        try:
+            await self._enviar("GET", self._ruta(""), "vencimiento")
+        except GitHubActionsError:
+            logger.info("vencimiento_no_disponible", extra={"event": "vencimiento_no_disponible"})
+            return None
+        return _con_dias(self._vencimiento[1]) if self._vencimiento else None
 
     # --- Operaciones ----------------------------------------------------
     async def disparar(self, entradas: dict[str, str]) -> dict[str, Any]:
